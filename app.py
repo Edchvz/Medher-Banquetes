@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Versión Web Completa para iOS / iPad / PC)
+Sistema Operativo de Banquetes - Medher (Versión Web Completa con Checklist y Edición de Nombre)
 """
 
 import os
@@ -40,7 +40,7 @@ st.set_page_config(
 st.title("🍳 Medher Banquetes y Más")
 st.caption("Sistema Operativo de Gestión y Escalado de Recetas")
 
-# Pestañas de navegación idénticas a tu versión de escritorio
+# Pestañas de navegación
 tab1, tab2, tab3 = st.tabs(
     ["📊 Escalar Producción", "➕ Nueva Receta", "🛠️ Modificar / Eliminar"]
 )
@@ -52,7 +52,7 @@ recetas_unicas = (
     else []
 )
 
-# === PESTAÑA 1: CÁLCULO Y EXPORTAR ===
+# === PESTAÑA 1: CÁLCULO Y EXPORTAR / CHECKLIST ===
 with tab1:
   st.subheader("Cálculo de Insumos por Evento")
 
@@ -82,19 +82,37 @@ with tab1:
             f"Lista calculada para {int(platillos_objetivo)} platillos (Base: {int(platillos_base)})"
         )
 
-        # Mostrar tabla limpia
-        tabla_mostrar = receta_df[
-            ["Ingrediente", "Cantidad_Requerida", "Unidad"]
-        ].rename(columns={"Cantidad_Requerida": "Cantidad"})
-        st.dataframe(tabla_mostrar, use_container_width=True)
-
-        # Guardar en session_state para exportar
-        st.session_state.tabla_calculada = tabla_mostrar
+        # Guardar en session_state para mantener la lista y el checklist
+        st.session_state.tabla_calculada = receta_df
         st.session_state.receta_activa = receta_sel
         st.session_state.platillos_activos = int(platillos_objetivo)
+        st.session_state.compras_check = {i: False for i in range(len(receta_df))}
 
-    # Mostrar opciones de exportación si ya se calculó
+    # Mostrar lista interactiva si ya se calculó
     if "tabla_calculada" in st.session_state and not st.session_state.tabla_calculada.empty:
+      st.markdown("---")
+      st.write("### 🛒 Lista de Compras / Preparación (Checklist)")
+      st.caption("Marca los insumos que ya tengas listos:")
+
+      # Inicializar estado de checks si no existe
+      if "compras_check" not in st.session_state:
+        st.session_state.compras_check = {i: False for i in range(len(st.session_state.tabla_calculada))}
+
+      # Renderizar checkboxes interactivos
+      for idx, row in st.session_state.tabla_calculada.reset_index(drop=True).iterrows():
+        etiqueta = f"**{row['Ingrediente']}** — {row['Cantidad_Requerida']} {row['Unidad']}"
+        st.session_state.compras_check[idx] = st.checkbox(
+            etiqueta, 
+            value=st.session_state.compras_check.get(idx, False), 
+            key=f"chk_{idx}"
+        )
+
+      col_fin1, col_fin2 = st.columns(2)
+      with col_fin1:
+        if st.button("🔄 Siguiente Evento / Limpiar Checklist"):
+          st.session_state.compras_check = {i: False for i in range(len(st.session_state.tabla_calculada))}
+          st.rerun()
+
       st.markdown("---")
       st.write("### Opciones de Exportación")
 
@@ -105,7 +123,7 @@ with tab1:
       texto_wpp += f"----------------------\n"
       texto_wpp += f"LISTA DE INGREDIENTES:\n"
       for _, row in st.session_state.tabla_calculada.iterrows():
-        texto_wpp += f" • {row['Ingrediente']}: {row['Cantidad']} {row['Unidad']}\n"
+        texto_wpp += f" • {row['Ingrediente']}: {row['Cantidad_Requerida']} {row['Unidad']}\n"
 
       st.text_area("Texto formateado (para WhatsApp o Notas):", texto_wpp, height=150)
 
@@ -136,7 +154,7 @@ with tab1:
         pdf.set_font("Arial", '', 10)
         for _, fila in st.session_state.tabla_calculada.iterrows():
             pdf.cell(90, 10, str(fila['Ingrediente']), 1, 0, 'L')
-            pdf.cell(50, 10, str(fila['Cantidad']), 1, 0, 'C')
+            pdf.cell(50, 10, str(fila['Cantidad_Requerida']), 1, 0, 'C')
             pdf.cell(50, 10, str(fila['Unidad']), 1, 1, 'C')
             
         return pdf.output(dest='S').encode('latin-1')
@@ -230,6 +248,9 @@ with tab3:
       df_receta_edit = df_actual[filtro_ed]
 
       st.markdown(f"### Modificando: {receta_mod}")
+      
+      # Nuevo campo para cambiar el nombre de la receta
+      nuevo_nombre_receta = st.text_input("Nombre de la Receta", value=receta_mod, key="edit_nombre_receta")
       nuevo_base_mod = st.number_input("Platillos Base", value=float(df_receta_edit['Platillos_Base'].iloc[0]), step=1.0, key="edit_base")
 
       # Cargar ingredientes a session state para edición interactiva
@@ -269,16 +290,18 @@ with tab3:
           st.rerun()
 
       if st.button("💾 Sobrescribir y Guardar Cambios Definitivos", type="primary"):
-        if not st.session_state.edit_ingredientes:
+        if not nuevo_nombre_receta.strip():
+          st.error("El nombre de la receta no puede estar vacío.")
+        elif not st.session_state.edit_ingredientes:
           st.error("La receta debe tener al menos un ingrediente.")
         else:
           df_base = cargar_recetas()
           # Quitar la versión vieja
           df_base = df_base[~(df_base['Receta'].astype(str).str.lower() == receta_mod.lower())].reset_index(drop=True)
           
-          # Crear nuevos registros
+          # Crear nuevos registros con el nuevo nombre (si se cambió) y base
           nuevos_cambios = [{
-              'Receta': receta_mod,
+              'Receta': nuevo_nombre_receta.strip(),
               'Platillos_Base': nuevo_base_mod,
               **item
           } for item in st.session_state.edit_ingredientes]
