@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Versión Web Completa con Checklist y Edición de Nombre)
+Sistema Operativo de Banquetes - Medher (Versión Web con Tabla y Exportación a JPG)
 """
 
 import os
 import pandas as pd
 import streamlit as st
-from fpdf import FPDF
+import matplotlib.pyplot as plt
+import io
 
 FILE_PATH = "recetas_base.csv"
 
@@ -52,7 +53,7 @@ recetas_unicas = (
     else []
 )
 
-# === PESTAÑA 1: CÁLCULO Y EXPORTAR / CHECKLIST ===
+# === PESTAÑA 1: CÁLCULO Y EXPORTAR A JPG ===
 with tab1:
   st.subheader("Cálculo de Insumos por Evento")
 
@@ -82,88 +83,80 @@ with tab1:
             f"Lista calculada para {int(platillos_objetivo)} platillos (Base: {int(platillos_base)})"
         )
 
-        # Guardar en session_state para mantener la lista y el checklist
-        st.session_state.tabla_calculada = receta_df
+        # Guardar en session_state
+        st.session_state.tabla_calculada = receta_df[
+            ["Ingrediente", "Cantidad_Requerida", "Unidad"]
+        ].rename(columns={"Cantidad_Requerida": "Cantidad"})
         st.session_state.receta_activa = receta_sel
         st.session_state.platillos_activos = int(platillos_objetivo)
-        st.session_state.compras_check = {i: False for i in range(len(receta_df))}
 
-    # Mostrar lista interactiva si ya se calculó
+    # Mostrar tabla limpia
     if "tabla_calculada" in st.session_state and not st.session_state.tabla_calculada.empty:
-      st.markdown("---")
-      st.write("### 🛒 Lista de Compras / Preparación (Checklist)")
-      st.caption("Marca los insumos que ya tengas listos:")
-
-      # Inicializar estado de checks si no existe
-      if "compras_check" not in st.session_state:
-        st.session_state.compras_check = {i: False for i in range(len(st.session_state.tabla_calculada))}
-
-      # Renderizar checkboxes interactivos
-      for idx, row in st.session_state.tabla_calculada.reset_index(drop=True).iterrows():
-        etiqueta = f"**{row['Ingrediente']}** — {row['Cantidad_Requerida']} {row['Unidad']}"
-        st.session_state.compras_check[idx] = st.checkbox(
-            etiqueta, 
-            value=st.session_state.compras_check.get(idx, False), 
-            key=f"chk_{idx}"
-        )
-
-      col_fin1, col_fin2 = st.columns(2)
-      with col_fin1:
-        if st.button("🔄 Siguiente Evento / Limpiar Checklist"):
-          st.session_state.compras_check = {i: False for i in range(len(st.session_state.tabla_calculada))}
-          st.rerun()
+      st.dataframe(st.session_state.tabla_calculada, use_container_width=True)
 
       st.markdown("---")
       st.write("### Opciones de Exportación")
 
-      # Generar texto para WhatsApp
+      # Texto para WhatsApp
       texto_wpp = f"--- MEDHER BANQUETES Y MÁS ---\n"
       texto_wpp += f"Receta: {st.session_state.receta_activa.upper()}\n"
       texto_wpp += f"Platillos a preparar: {st.session_state.platillos_activos}\n"
       texto_wpp += f"----------------------\n"
       texto_wpp += f"LISTA DE INGREDIENTES:\n"
       for _, row in st.session_state.tabla_calculada.iterrows():
-        texto_wpp += f" • {row['Ingrediente']}: {row['Cantidad_Requerida']} {row['Unidad']}\n"
+        texto_wpp += f" • {row['Ingrediente']}: {row['Cantidad']} {row['Unidad']}\n"
 
       st.text_area("Texto formateado (para WhatsApp o Notas):", texto_wpp, height=150)
 
-      # Función para exportar a PDF en web
-      def generar_pdf():
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", 'B', 16)
-        pdf.cell(190, 10, "MEDHER BANQUETES Y MÁS", ln=True, align='C')
-        pdf.set_font("Arial", 'I', 10)
-        pdf.cell(190, 6, "Reynosa, Tamaulipas", ln=True, align='C')
-        pdf.ln(5)
-        
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(190, 10, f"Orden de Producción: {st.session_state.receta_activa.upper()}", ln=True, align='L')
-        pdf.set_font("Arial", '', 11)
-        pdf.cell(190, 8, f"Total de Platillos a preparar: {st.session_state.platillos_activos}", ln=True, align='L')
-        pdf.ln(5)
-        
-        pdf.set_fill_color(44, 62, 80)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font("Arial", 'B', 10)
-        pdf.cell(90, 10, "Ingrediente", 1, 0, 'C', fill=True)
-        pdf.cell(50, 10, "Cantidad", 1, 0, 'C', fill=True)
-        pdf.cell(50, 10, "Unidad", 1, 1, 'C', fill=True)
-        
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font("Arial", '', 10)
-        for _, fila in st.session_state.tabla_calculada.iterrows():
-            pdf.cell(90, 10, str(fila['Ingrediente']), 1, 0, 'L')
-            pdf.cell(50, 10, str(fila['Cantidad_Requerida']), 1, 0, 'C')
-            pdf.cell(50, 10, str(fila['Unidad']), 1, 1, 'C')
-            
-        return pdf.output(dest='S').encode('latin-1')
+      # Función para generar imagen JPG a partir de la tabla
+      def generar_jpg():
+        df_t = st.session_state.tabla_calculada
+        fig, ax = plt.subplots(figsize=(8, max(4, len(df_t) * 0.4 + 2)))
+        ax.axis('off')
+        ax.axis('tight')
+
+        # Título y datos arriba en la gráfica
+        ax.set_title(
+            f"MEDHER BANQUETES Y MÁS\nOrden de Producción: {st.session_state.receta_activa.upper()}\nPlatillos: {st.session_state.platillos_activos}\n",
+            fontsize=12, fontweight='bold', color='#2c3e50', pad=20
+        )
+
+        # Preparar datos de la tabla
+        table_data = [[row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in df_t.iterrows()]
+        col_labels = ["Ingrediente", "Cantidad", "Unidad"]
+
+        table = ax.table(
+            cellText=table_data,
+            colLabels=col_labels,
+            loc='center',
+            cellLoc='center',
+            colColours=['#2c3e50', '#2c3e50', '#2c3e50']
+        )
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.2, 1.5)
+
+        # Estilizar colores de la tabla
+        for key, cell in table.get_celld().items():
+          cell.set_edgecolor('#bdc3c7')
+          if key[0] == 0:
+            cell.set_text_props(color='white', fontweight='bold')
+            cell.set_facecolor('#2c3e50')
+          else:
+            cell.set_facecolor('#ecf0f1' if key[0] % 2 == 0 else 'white')
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300)
+        plt.close(fig)
+        buf.seek(0)
+        return buf
 
       st.download_button(
-          label="📥 Guardar Reporte en PDF",
-          data=generar_pdf(),
-          file_name=f"Produccion_{st.session_state.receta_activa}_{st.session_state.platillos_activos}pax.pdf",
-          mime="application/pdf"
+          label="📥 Guardar Reporte en Imagen (JPG)",
+          data=generar_jpg(),
+          file_name=f"Produccion_{st.session_state.receta_activa}_{st.session_state.platillos_activos}pax.jpg",
+          mime="image/jpeg"
       )
 
 # === PESTAÑA 2: NUEVA RECETA ===
@@ -249,11 +242,9 @@ with tab3:
 
       st.markdown(f"### Modificando: {receta_mod}")
       
-      # Nuevo campo para cambiar el nombre de la receta
       nuevo_nombre_receta = st.text_input("Nombre de la Receta", value=receta_mod, key="edit_nombre_receta")
       nuevo_base_mod = st.number_input("Platillos Base", value=float(df_receta_edit['Platillos_Base'].iloc[0]), step=1.0, key="edit_base")
 
-      # Cargar ingredientes a session state para edición interactiva
       if "edit_ingredientes" not in st.session_state or st.session_state.get("current_receta_loaded") != receta_mod:
         st.session_state.edit_ingredientes = df_receta_edit[['Ingrediente', 'Cantidad_Base', 'Unidad']].to_dict('records')
         st.session_state.current_receta_loaded = receta_mod
@@ -262,7 +253,6 @@ with tab3:
       df_temp_edit = pd.DataFrame(st.session_state.edit_ingredientes)
       st.dataframe(df_temp_edit, use_container_width=True)
 
-      # Controles para añadir/quitar ingredientes en la edición
       col_e1, col_e2, col_e3 = st.columns(3)
       with col_e1:
         e_ing = st.text_input("Nuevo/Editar Insumo", key="e_ing")
@@ -296,10 +286,8 @@ with tab3:
           st.error("La receta debe tener al menos un ingrediente.")
         else:
           df_base = cargar_recetas()
-          # Quitar la versión vieja
           df_base = df_base[~(df_base['Receta'].astype(str).str.lower() == receta_mod.lower())].reset_index(drop=True)
           
-          # Crear nuevos registros con el nuevo nombre (si se cambió) y base
           nuevos_cambios = [{
               'Receta': nuevo_nombre_receta.strip(),
               'Platillos_Base': nuevo_base_mod,
