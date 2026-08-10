@@ -38,6 +38,13 @@ st.set_page_config(
     page_title="Medher Banquetes y Más", page_icon="🍳", layout="centered"
 )
 
+st.markdown(
+    """
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png">
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("🍳 Medher Banquetes y Más")
 st.caption("Sistema Operativo de Gestión y Escalado de Recetas")
 
