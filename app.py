@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Persistencia en GitHub)
+Sistema Operativo de Banquetes - Medher (Con Categorización y GitHub)
 """
 
 import os
@@ -10,55 +10,57 @@ import matplotlib.pyplot as plt
 import io
 
 FILE_PATH = "recetas_base.csv"
+CATEGORIAS = ["Abarrotes", "Carnicería", "Frutas y Verduras", "Lácteos y Refrigerados", "Desechables", "Bebidas", "General"]
 
 # --- 1. INICIALIZACIÓN DE BASE DE DATOS ---
 if not os.path.exists(FILE_PATH):
   df_inicial = pd.DataFrame(
-      columns=["Receta", "Platillos_Base", "Ingrediente", "Cantidad_Base", "Unidad"]
+      columns=["Receta", "Platillos_Base", "Ingrediente", "Cantidad_Base", "Unidad", "Categoria"]
   )
   df_inicial.to_csv(FILE_PATH, index=False)
 
 
 def cargar_recetas():
-  return pd.read_csv(FILE_PATH)
+  df = pd.read_csv(FILE_PATH)
+  # Actualización automática si el CSV viejo no tiene la columna de categoría
+  if "Categoria" not in df.columns:
+      df["Categoria"] = "General"
+      guardar_recetas_local(df)
+  return df
+
+
+def guardar_recetas_local(df):
+    df.to_csv(FILE_PATH, index=False)
 
 
 def guardar_recetas(df):
-  # 1. Guardar localmente en el servidor temporal
-  df.to_csv(FILE_PATH, index=False)
+  # 1. Guardar localmente
+  guardar_recetas_local(df)
   
   # 2. Sincronizar permanentemente con GitHub si la llave existe
   if "GITHUB_TOKEN" in st.secrets:
     try:
       from github import Github
-      # Conectar a GitHub usando la llave secreta
       g = Github(st.secrets["GITHUB_TOKEN"])
-      # Entrar a tu repositorio exacto
       repo = g.get_repo("Edchvz/Medher-Banquetes")
-      
-      # Obtener el archivo viejo de la nube
       contents = repo.get_contents(FILE_PATH, ref="main")
-      
-      # Convertir la nueva tabla a formato de texto CSV
       csv_data = df.to_csv(index=False)
-      
-      # Sobrescribir el archivo en la nube
       repo.update_file(
           contents.path,
-          "Sincronización automática desde la App Web",
+          "Sincronización de recetas desde la App",
           csv_data,
           contents.sha,
           branch="main"
       )
     except Exception as e:
-      st.error(f"Error al sincronizar con la nube maestra: {e}")
+      st.error(f"Error al sincronizar con GitHub: {e}")
 
 
 # --- CONFIGURACIÓN DE PÁGINA E ICONOS ---
 st.set_page_config(
     page_title="Medher Banquetes y Más", 
     page_icon="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png", 
-    layout="centered"
+    layout="wide" # Cambiado a wide para que las tablas con más columnas se vean mejor
 )
 
 st.markdown(
@@ -71,7 +73,7 @@ st.markdown(
 
 st.markdown(
     """
-    <div style="display: flex; align-items: center;">
+    <div style="display: flex; align-items: center; margin-bottom: 10px;">
         <img src="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png" width="55" style="border-radius: 12px; margin-right: 15px;">
         <h1 style="margin: 0;">Medher Banquetes y Más</h1>
     </div>
@@ -110,7 +112,10 @@ with tab1:
 
         st.success(f"Lista calculada para {int(platillos_objetivo)} platillos (Base: {int(platillos_base)})")
 
-        st.session_state.tabla_calculada = receta_df[["Ingrediente", "Cantidad_Requerida", "Unidad"]].rename(columns={"Cantidad_Requerida": "Cantidad"})
+        # Ordenar alfabéticamente por categoría para la visualización
+        receta_df = receta_df.sort_values(by="Categoria")
+        
+        st.session_state.tabla_calculada = receta_df[["Categoria", "Ingrediente", "Cantidad_Requerida", "Unidad"]].rename(columns={"Cantidad_Requerida": "Cantidad"})
         st.session_state.receta_activa = receta_sel
         st.session_state.platillos_activos = int(platillos_objetivo)
 
@@ -120,19 +125,23 @@ with tab1:
       st.markdown("---")
       st.write("### Opciones de Exportación")
 
+      # Texto para WhatsApp AGRUPADO POR CATEGORÍA
       texto_wpp = f"--- MEDHER BANQUETES Y MÁS ---\n"
       texto_wpp += f"Receta: {st.session_state.receta_activa.upper()}\n"
       texto_wpp += f"Platillos a preparar: {st.session_state.platillos_activos}\n"
       texto_wpp += f"----------------------\n"
-      texto_wpp += f"LISTA DE INGREDIENTES:\n"
-      for _, row in st.session_state.tabla_calculada.iterrows():
-        texto_wpp += f" • {row['Ingrediente']}: {row['Cantidad']} {row['Unidad']}\n"
+      
+      df_agrupado = st.session_state.tabla_calculada.groupby("Categoria")
+      for cat, grupo in df_agrupado:
+          texto_wpp += f"\n🛒 {cat.upper()}:\n"
+          for _, row in grupo.iterrows():
+              texto_wpp += f" • {row['Ingrediente']}: {row['Cantidad']} {row['Unidad']}\n"
 
-      st.text_area("Texto formateado (para WhatsApp o Notas):", texto_wpp, height=150)
+      st.text_area("Texto formateado (agrupado por pasillos para WhatsApp):", texto_wpp, height=250)
 
       def generar_jpg():
         df_t = st.session_state.tabla_calculada
-        fig, ax = plt.subplots(figsize=(8, max(4, len(df_t) * 0.4 + 2)))
+        fig, ax = plt.subplots(figsize=(10, max(4, len(df_t) * 0.4 + 2))) # Más ancho por la nueva columna
         ax.axis('off')
         ax.axis('tight')
 
@@ -141,15 +150,15 @@ with tab1:
             fontsize=12, fontweight='bold', color='#2c3e50', pad=20
         )
 
-        table_data = [[row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in df_t.iterrows()]
-        col_labels = ["Ingrediente", "Cantidad", "Unidad"]
+        table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in df_t.iterrows()]
+        col_labels = ["Categoría", "Ingrediente", "Cantidad", "Unidad"]
 
         table = ax.table(
             cellText=table_data,
             colLabels=col_labels,
             loc='center',
             cellLoc='center',
-            colColours=['#2c3e50', '#2c3e50', '#2c3e50']
+            colColours=['#2c3e50', '#2c3e50', '#2c3e50', '#2c3e50']
         )
 
         table.auto_set_font_size(False)
@@ -189,20 +198,22 @@ with tab2:
   if "temp_ingredientes" not in st.session_state:
     st.session_state.temp_ingredientes = []
 
-  col_i1, col_i2, col_i3 = st.columns(3)
+  col_i1, col_i2, col_i3, col_i4 = st.columns([3, 2, 2, 3])
   with col_i1:
     insumo = st.text_input("Insumo", key="input_insumo")
   with col_i2:
     cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="input_cant")
   with col_i3:
     unidad_insumo = st.text_input("Unidad", key="input_uni")
+  with col_i4:
+    cat_insumo = st.selectbox("Categoría", CATEGORIAS, key="input_cat")
 
   if st.button("+ Agregar Insumo a la Lista"):
     if insumo.strip() and unidad_insumo.strip():
       st.session_state.temp_ingredientes.append({
-          "Ingrediente": insumo.strip(), "Cantidad_Base": cant_insumo, "Unidad": unidad_insumo.strip(),
+          "Categoria": cat_insumo, "Ingrediente": insumo.strip(), "Cantidad_Base": cant_insumo, "Unidad": unidad_insumo.strip(),
       })
-      st.success(f"Insumo agregado: {insumo}")
+      st.success(f"Insumo agregado: {insumo} ({cat_insumo})")
     else:
       st.warning("Completa el nombre del insumo y la unidad.")
 
@@ -255,25 +266,27 @@ with tab3:
       nuevo_base_mod = st.number_input("Platillos Base", value=float(df_receta_edit['Platillos_Base'].iloc[0]), step=1.0, key="edit_base")
 
       if "edit_ingredientes" not in st.session_state or st.session_state.get("current_receta_loaded") != receta_mod:
-        st.session_state.edit_ingredientes = df_receta_edit[['Ingrediente', 'Cantidad_Base', 'Unidad']].to_dict('records')
+        st.session_state.edit_ingredientes = df_receta_edit[['Categoria', 'Ingrediente', 'Cantidad_Base', 'Unidad']].to_dict('records')
         st.session_state.current_receta_loaded = receta_mod
 
       st.write("Ingredientes actuales:")
       st.dataframe(pd.DataFrame(st.session_state.edit_ingredientes), use_container_width=True)
 
-      col_e1, col_e2, col_e3 = st.columns(3)
+      col_e1, col_e2, col_e3, col_e4 = st.columns([3, 2, 2, 3])
       with col_e1:
         e_ing = st.text_input("Nuevo/Editar Insumo", key="e_ing")
       with col_e2:
         e_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="e_cant")
       with col_e3:
         e_uni = st.text_input("Unidad", key="e_uni")
+      with col_e4:
+        e_cat = st.selectbox("Categoría", CATEGORIAS, key="e_cat")
 
       col_btn1, col_btn2 = st.columns(2)
       with col_btn1:
         if st.button("➕ Agregar Insumo a la Edición"):
           if e_ing.strip() and e_uni.strip():
-            st.session_state.edit_ingredientes.append({"Ingrediente": e_ing.strip(), "Cantidad_Base": e_cant, "Unidad": e_uni.strip()})
+            st.session_state.edit_ingredientes.append({"Categoria": e_cat, "Ingrediente": e_ing.strip(), "Cantidad_Base": e_cant, "Unidad": e_uni.strip()})
             st.rerun()
           else:
             st.warning("Completa los datos del insumo.")
