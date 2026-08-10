@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Con Extras, Categorías y GitHub)
+Sistema Operativo de Banquetes - Medher (Con Catálogo Inteligente de Insumos)
 """
 
 import os
@@ -12,7 +12,7 @@ import io
 FILE_PATH = "recetas_base.csv"
 CATEGORIAS = ["Abarrotes", "Carnicería", "Frutas y Verduras", "Lácteos y Refrigerados", "Desechables", "Bebidas", "Limpieza", "General"]
 
-# --- 1. INICIALIZACIÓN DE BASE DE DATOS ---
+# --- 1. INICIALIZACIÓN Y BASE DE DATOS ---
 if not os.path.exists(FILE_PATH):
   df_inicial = pd.DataFrame(
       columns=["Receta", "Platillos_Base", "Ingrediente", "Cantidad_Base", "Unidad", "Categoria"]
@@ -52,6 +52,17 @@ def guardar_recetas(df):
       st.error(f"Error al sincronizar con GitHub: {e}")
 
 
+def obtener_catalogo_insumos(df):
+    """Crea un catálogo único de ingredientes basándose en el historial de recetas."""
+    if df.empty:
+        return {}
+    catalogo = {}
+    # Recorremos el dataframe y guardamos la última unidad y categoría usada para cada insumo
+    for _, row in df.iterrows():
+        catalogo[row['Ingrediente']] = {"Unidad": row['Unidad'], "Categoria": row['Categoria']}
+    return catalogo
+
+
 # --- CONFIGURACIÓN DE PÁGINA E ICONOS ---
 st.set_page_config(
     page_title="Medher Banquetes y Más", 
@@ -78,11 +89,14 @@ st.markdown(
 )
 st.caption("Sistema Operativo de Gestión y Escalado de Recetas")
 
-# Pestañas de navegación
-tab1, tab2, tab3 = st.tabs(["📊 Escalar Producción", "➕ Nueva Receta", "🛠️ Modificar / Eliminar"])
-
+# Cargamos datos frescos
 df_actual = cargar_recetas()
 recetas_unicas = sorted(df_actual["Receta"].unique().tolist()) if not df_actual.empty else []
+catalogo_maestro = obtener_catalogo_insumos(df_actual)
+lista_opciones_insumos = ["➕ Crear Nuevo Insumo..."] + sorted(list(catalogo_maestro.keys()))
+
+# Pestañas de navegación
+tab1, tab2, tab3 = st.tabs(["📊 Escalar Producción", "➕ Nueva Receta", "🛠️ Modificar / Eliminar"])
 
 # === PESTAÑA 1: CÁLCULO, EXTRAS Y EXPORTACIÓN ===
 with tab1:
@@ -117,19 +131,15 @@ with tab1:
     if "tabla_calculada" in st.session_state and not st.session_state.tabla_calculada.empty:
       st.dataframe(st.session_state.tabla_calculada, use_container_width=True)
 
-      # --- NUEVA ZONA DE EXTRAS ---
+      # --- ZONA DE EXTRAS ---
       st.markdown("### 🛒 Extras para el mandado")
       st.caption("Añade productos adicionales a tu lista de compras (ej. Hielo, Servilletas, Jabón).")
       
       col_ex1, col_ex2, col_ex3, col_ex4 = st.columns([3, 2, 2, 3])
-      with col_ex1:
-          extra_insumo = st.text_input("Artículo extra", key="extra_insumo")
-      with col_ex2:
-          extra_cant = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="extra_cant")
-      with col_ex3:
-          extra_uni = st.text_input("Unidad", key="extra_uni")
-      with col_ex4:
-          extra_cat = st.selectbox("Categoría", CATEGORIAS, key="extra_cat")
+      with col_ex1: extra_insumo = st.text_input("Artículo extra", key="extra_insumo")
+      with col_ex2: extra_cant = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="extra_cant")
+      with col_ex3: extra_uni = st.text_input("Unidad", key="extra_uni")
+      with col_ex4: extra_cat = st.selectbox("Categoría", CATEGORIAS, key="extra_cat")
           
       if st.button("➕ Agregar Extra a la Lista"):
           if extra_insumo.strip() and extra_uni.strip():
@@ -139,8 +149,6 @@ with tab1:
                   "Cantidad": extra_cant, 
                   "Unidad": extra_uni.strip()
               }])
-              
-              # Añadimos el extra y re-ordenamos la tabla por categoría para que quede junto a los de su mismo pasillo
               st.session_state.tabla_calculada = pd.concat([st.session_state.tabla_calculada, nuevo_extra], ignore_index=True)
               st.session_state.tabla_calculada = st.session_state.tabla_calculada.sort_values(by="Categoria").reset_index(drop=True)
               st.rerun()
@@ -178,13 +186,8 @@ with tab1:
         col_labels = ["Categoría", "Ingrediente", "Cantidad", "Unidad"]
 
         table = ax.table(
-            cellText=table_data,
-            colLabels=col_labels,
-            loc='center',
-            cellLoc='center',
-            colColours=['#2c3e50', '#2c3e50', '#2c3e50', '#2c3e50']
+            cellText=table_data, colLabels=col_labels, loc='center', cellLoc='center', colColours=['#2c3e50', '#2c3e50', '#2c3e50', '#2c3e50']
         )
-
         table.auto_set_font_size(False)
         table.set_fontsize(10)
         table.scale(1.2, 1.5)
@@ -217,20 +220,32 @@ with tab2:
   base_nueva = st.number_input("Platillos Base (Rendimiento)", min_value=1.0, value=10.0, step=1.0, key="base_nueva_receta")
 
   st.markdown("---")
-  st.write("Añadir Insumos:")
+  st.write("Añadir Insumos (Catálogo Inteligente):")
 
   if "temp_ingredientes" not in st.session_state:
     st.session_state.temp_ingredientes = []
 
+  # Buscador del catálogo
+  modo_insumo = st.selectbox("🔍 Buscar en historial o crear nuevo:", lista_opciones_insumos, key="sel_cat_nuevo")
+
   col_i1, col_i2, col_i3, col_i4 = st.columns([3, 2, 2, 3])
-  with col_i1:
-    insumo = st.text_input("Insumo", key="input_insumo")
-  with col_i2:
-    cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="input_cant")
-  with col_i3:
-    unidad_insumo = st.text_input("Unidad", key="input_uni")
-  with col_i4:
-    cat_insumo = st.selectbox("Categoría", CATEGORIAS, key="input_cat")
+  
+  # Lógica de autocompletado
+  if modo_insumo == "➕ Crear Nuevo Insumo...":
+      with col_i1: insumo = st.text_input("Nombre del Insumo", key="input_insumo")
+      with col_i2: cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="input_cant")
+      with col_i3: unidad_insumo = st.text_input("Unidad", key="input_uni")
+      with col_i4: cat_insumo = st.selectbox("Categoría", CATEGORIAS, key="input_cat")
+  else:
+      datos_insumo = catalogo_maestro[modo_insumo]
+      # Determinamos el índice seguro para la categoría autocompletada
+      try: idx_cat = CATEGORIAS.index(datos_insumo["Categoria"])
+      except ValueError: idx_cat = CATEGORIAS.index("General")
+      
+      with col_i1: insumo = st.text_input("Nombre del Insumo", value=modo_insumo, disabled=True, key="input_insumo")
+      with col_i2: cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="input_cant")
+      with col_i3: unidad_insumo = st.text_input("Unidad", value=datos_insumo["Unidad"], key="input_uni")
+      with col_i4: cat_insumo = st.selectbox("Categoría", CATEGORIAS, index=idx_cat, key="input_cat")
 
   if st.button("+ Agregar Insumo a la Lista"):
     if insumo.strip() and unidad_insumo.strip():
@@ -269,10 +284,8 @@ with tab3:
     receta_mod = st.selectbox("Seleccionar Receta", recetas_unicas, key="select_modificar")
 
     col_m1, col_m2 = st.columns(2)
-    with col_m1:
-      cargar_edicion = st.button("Cargar para Editar")
-    with col_m2:
-      eliminar_completa = st.button("🗑️ ELIMINAR RECETA COMPLETA")
+    with col_m1: cargar_edicion = st.button("Cargar para Editar")
+    with col_m2: eliminar_completa = st.button("🗑️ ELIMINAR RECETA COMPLETA")
 
     if eliminar_completa:
       df_limpio = df_actual[~(df_actual['Receta'].astype(str).str.lower() == receta_mod.lower())].reset_index(drop=True)
@@ -296,15 +309,27 @@ with tab3:
       st.write("Ingredientes actuales:")
       st.dataframe(pd.DataFrame(st.session_state.edit_ingredientes), use_container_width=True)
 
+      st.markdown("---")
+      st.write("Añadir un nuevo insumo a esta receta:")
+      modo_insumo_ed = st.selectbox("🔍 Buscar en historial o crear nuevo:", lista_opciones_insumos, key="sel_cat_ed")
+
       col_e1, col_e2, col_e3, col_e4 = st.columns([3, 2, 2, 3])
-      with col_e1:
-        e_ing = st.text_input("Nuevo/Editar Insumo", key="e_ing")
-      with col_e2:
-        e_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="e_cant")
-      with col_e3:
-        e_uni = st.text_input("Unidad", key="e_uni")
-      with col_e4:
-        e_cat = st.selectbox("Categoría", CATEGORIAS, key="e_cat")
+      
+      # Lógica de autocompletado para el modo de edición
+      if modo_insumo_ed == "➕ Crear Nuevo Insumo...":
+          with col_e1: e_ing = st.text_input("Nombre del Insumo", key="e_ing")
+          with col_e2: e_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="e_cant")
+          with col_e3: e_uni = st.text_input("Unidad", key="e_uni")
+          with col_e4: e_cat = st.selectbox("Categoría", CATEGORIAS, key="e_cat")
+      else:
+          datos_insumo_ed = catalogo_maestro[modo_insumo_ed]
+          try: idx_cat_ed = CATEGORIAS.index(datos_insumo_ed["Categoria"])
+          except ValueError: idx_cat_ed = CATEGORIAS.index("General")
+          
+          with col_e1: e_ing = st.text_input("Nombre del Insumo", value=modo_insumo_ed, disabled=True, key="e_ing")
+          with col_e2: e_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="e_cant")
+          with col_e3: e_uni = st.text_input("Unidad", value=datos_insumo_ed["Unidad"], key="e_uni")
+          with col_e4: e_cat = st.selectbox("Categoría", CATEGORIAS, index=idx_cat_ed, key="e_cat")
 
       col_btn1, col_btn2 = st.columns(2)
       with col_btn1:
