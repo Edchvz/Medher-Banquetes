@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Con Categorización y GitHub)
+Sistema Operativo de Banquetes - Medher (Con Extras, Categorías y GitHub)
 """
 
 import os
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import io
 
 FILE_PATH = "recetas_base.csv"
-CATEGORIAS = ["Abarrotes", "Carnicería", "Frutas y Verduras", "Lácteos y Refrigerados", "Desechables", "Bebidas", "General"]
+CATEGORIAS = ["Abarrotes", "Carnicería", "Frutas y Verduras", "Lácteos y Refrigerados", "Desechables", "Bebidas", "Limpieza", "General"]
 
 # --- 1. INICIALIZACIÓN DE BASE DE DATOS ---
 if not os.path.exists(FILE_PATH):
@@ -22,7 +22,6 @@ if not os.path.exists(FILE_PATH):
 
 def cargar_recetas():
   df = pd.read_csv(FILE_PATH)
-  # Actualización automática si el CSV viejo no tiene la columna de categoría
   if "Categoria" not in df.columns:
       df["Categoria"] = "General"
       guardar_recetas_local(df)
@@ -34,10 +33,7 @@ def guardar_recetas_local(df):
 
 
 def guardar_recetas(df):
-  # 1. Guardar localmente
   guardar_recetas_local(df)
-  
-  # 2. Sincronizar permanentemente con GitHub si la llave existe
   if "GITHUB_TOKEN" in st.secrets:
     try:
       from github import Github
@@ -60,7 +56,7 @@ def guardar_recetas(df):
 st.set_page_config(
     page_title="Medher Banquetes y Más", 
     page_icon="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png", 
-    layout="wide" # Cambiado a wide para que las tablas con más columnas se vean mejor
+    layout="wide" 
 )
 
 st.markdown(
@@ -88,7 +84,7 @@ tab1, tab2, tab3 = st.tabs(["📊 Escalar Producción", "➕ Nueva Receta", "�
 df_actual = cargar_recetas()
 recetas_unicas = sorted(df_actual["Receta"].unique().tolist()) if not df_actual.empty else []
 
-# === PESTAÑA 1: CÁLCULO Y EXPORTAR A JPG ===
+# === PESTAÑA 1: CÁLCULO, EXTRAS Y EXPORTACIÓN ===
 with tab1:
   st.subheader("Cálculo de Insumos por Evento")
 
@@ -112,7 +108,6 @@ with tab1:
 
         st.success(f"Lista calculada para {int(platillos_objetivo)} platillos (Base: {int(platillos_base)})")
 
-        # Ordenar alfabéticamente por categoría para la visualización
         receta_df = receta_df.sort_values(by="Categoria")
         
         st.session_state.tabla_calculada = receta_df[["Categoria", "Ingrediente", "Cantidad_Requerida", "Unidad"]].rename(columns={"Cantidad_Requerida": "Cantidad"})
@@ -122,10 +117,39 @@ with tab1:
     if "tabla_calculada" in st.session_state and not st.session_state.tabla_calculada.empty:
       st.dataframe(st.session_state.tabla_calculada, use_container_width=True)
 
+      # --- NUEVA ZONA DE EXTRAS ---
+      st.markdown("### 🛒 Extras para el mandado")
+      st.caption("Añade productos adicionales a tu lista de compras (ej. Hielo, Servilletas, Jabón).")
+      
+      col_ex1, col_ex2, col_ex3, col_ex4 = st.columns([3, 2, 2, 3])
+      with col_ex1:
+          extra_insumo = st.text_input("Artículo extra", key="extra_insumo")
+      with col_ex2:
+          extra_cant = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="extra_cant")
+      with col_ex3:
+          extra_uni = st.text_input("Unidad", key="extra_uni")
+      with col_ex4:
+          extra_cat = st.selectbox("Categoría", CATEGORIAS, key="extra_cat")
+          
+      if st.button("➕ Agregar Extra a la Lista"):
+          if extra_insumo.strip() and extra_uni.strip():
+              nuevo_extra = pd.DataFrame([{
+                  "Categoria": extra_cat, 
+                  "Ingrediente": extra_insumo.strip() + " (Extra)", 
+                  "Cantidad": extra_cant, 
+                  "Unidad": extra_uni.strip()
+              }])
+              
+              # Añadimos el extra y re-ordenamos la tabla por categoría para que quede junto a los de su mismo pasillo
+              st.session_state.tabla_calculada = pd.concat([st.session_state.tabla_calculada, nuevo_extra], ignore_index=True)
+              st.session_state.tabla_calculada = st.session_state.tabla_calculada.sort_values(by="Categoria").reset_index(drop=True)
+              st.rerun()
+          else:
+              st.warning("Completa el nombre del artículo y la unidad.")
+
       st.markdown("---")
       st.write("### Opciones de Exportación")
 
-      # Texto para WhatsApp AGRUPADO POR CATEGORÍA
       texto_wpp = f"--- MEDHER BANQUETES Y MÁS ---\n"
       texto_wpp += f"Receta: {st.session_state.receta_activa.upper()}\n"
       texto_wpp += f"Platillos a preparar: {st.session_state.platillos_activos}\n"
@@ -141,7 +165,7 @@ with tab1:
 
       def generar_jpg():
         df_t = st.session_state.tabla_calculada
-        fig, ax = plt.subplots(figsize=(10, max(4, len(df_t) * 0.4 + 2))) # Más ancho por la nueva columna
+        fig, ax = plt.subplots(figsize=(10, max(4, len(df_t) * 0.4 + 2))) 
         ax.axis('off')
         ax.axis('tight')
 
