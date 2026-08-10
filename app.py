@@ -69,7 +69,15 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.title("🍳 Medher Banquetes y Más")
+st.markdown(
+    """
+    <div style="display: flex; align-items: center;">
+        <img src="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png" width="55" style="border-radius: 12px; margin-right: 15px;">
+        <h1 style="margin: 0;">Medher Banquetes y Más</h1>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
 st.caption("Sistema Operativo de Gestión y Escalado de Recetas")
 
 # Pestañas de navegación
