@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Gestor de Catálogo y Edición Dinámica)
+Sistema Operativo de Banquetes - Medher (Gestor de Catálogo y Eliminación Corregida)
 """
 
 import os
@@ -245,14 +245,14 @@ with tab3:
         st.session_state.edit_ingredientes = df_receta_edit[['Categoria', 'Ingrediente', 'Cantidad_Base', 'Unidad']].to_dict('records')
         st.session_state.current_receta_loaded = receta_mod
 
-      # --- NUEVO: EDITOR DINÁMICO (DOBLE CLIC) ---
-      st.write("Ingredientes actuales (**Haz doble clic en cualquier celda** para editarla directamente o selecciona y borra con 'Suprimir'):")
+      # --- NUEVO: EDITOR DINÁMICO (CORREGIDO PARA MOSTRAR CASILLAS) ---
+      st.write("Ingredientes actuales (**Haz doble clic** en cualquier celda para editarla o marca la casilla de la izquierda para borrar con 'Suprimir'):")
       
       edited_df = st.data_editor(
           pd.DataFrame(st.session_state.edit_ingredientes),
           num_rows="dynamic",
           use_container_width=True,
-          hide_index=True,
+          hide_index=False, # <-- CORRECCIÓN: Permite seleccionar filas
           column_config={
               "Categoria": st.column_config.SelectboxColumn("Categoría", options=CATEGORIAS, required=True),
               "Ingrediente": st.column_config.TextColumn("Ingrediente", required=True),
@@ -262,7 +262,6 @@ with tab3:
           key="data_editor_receta"
       )
       
-      # Sincronizamos los cambios del editor dinámico
       st.session_state.edit_ingredientes = edited_df.to_dict('records')
 
       st.markdown("---")
@@ -284,23 +283,37 @@ with tab3:
           with col_e3: e_uni = st.text_input("Unidad", value=datos_insumo_ed["Unidad"], key="e_uni")
           with col_e4: e_cat = st.selectbox("Categoría", CATEGORIAS, index=idx_cat_ed, key="e_cat")
 
-      if st.button("➕ Agregar / Actualizar Insumo"):
-          if e_ing.strip() and e_uni.strip():
-              insumo_nombre = e_ing.strip()
-              encontrado = False
-              # Revisamos si ya existe para no duplicarlo, solo actualizar cantidad
-              for item in st.session_state.edit_ingredientes:
-                  if item['Ingrediente'].lower() == insumo_nombre.lower():
-                      item['Cantidad_Base'] = e_cant
-                      item['Unidad'] = e_uni.strip()
-                      item['Categoria'] = e_cat
-                      encontrado = True
-                      break
-              if not encontrado:
-                  st.session_state.edit_ingredientes.append({"Categoria": e_cat, "Ingrediente": insumo_nombre, "Cantidad_Base": e_cant, "Unidad": e_uni.strip()})
-              st.rerun()
-          else:
-              st.warning("Completa los datos del insumo.")
+      st.markdown("<br>", unsafe_allow_html=True)
+      col_btn1, col_btn2 = st.columns(2)
+      
+      # BOTÓN DE AGREGAR
+      with col_btn1:
+          if st.button("➕ Agregar / Actualizar Insumo", use_container_width=True):
+              if e_ing.strip() and e_uni.strip():
+                  insumo_nombre = e_ing.strip()
+                  encontrado = False
+                  for item in st.session_state.edit_ingredientes:
+                      if item['Ingrediente'].lower() == insumo_nombre.lower():
+                          item['Cantidad_Base'] = e_cant
+                          item['Unidad'] = e_uni.strip()
+                          item['Categoria'] = e_cat
+                          encontrado = True
+                          break
+                  if not encontrado:
+                      st.session_state.edit_ingredientes.append({"Categoria": e_cat, "Ingrediente": insumo_nombre, "Cantidad_Base": e_cant, "Unidad": e_uni.strip()})
+                  st.rerun()
+              else:
+                  st.warning("Completa los datos del insumo.")
+                  
+      # BOTÓN DE ELIMINAR PARA MÓVILES
+      with col_btn2:
+          col_sel, col_del = st.columns([3, 2])
+          with col_sel:
+              ing_a_quitar = st.selectbox("Eliminar insumo:", [item['Ingrediente'] for item in st.session_state.edit_ingredientes] if st.session_state.edit_ingredientes else ["Ninguno"], label_visibility="collapsed", key="quitar_ing")
+          with col_del:
+              if st.button("🗑️ Quitar Insumo", use_container_width=True) and ing_a_quitar != "Ninguno":
+                  st.session_state.edit_ingredientes = [item for item in st.session_state.edit_ingredientes if item['Ingrediente'] != ing_a_quitar]
+                  st.rerun()
 
       st.markdown("<br>", unsafe_allow_html=True)
       if st.button("💾 Sobrescribir y Guardar Cambios Definitivos de la Receta", type="primary"):
@@ -345,7 +358,6 @@ with tab4:
                     st.error("El nombre no puede estar vacío.")
                 else:
                     df_base = cargar_recetas()
-                    # Actualizar todas las filas donde el ingrediente coincida
                     mask = df_base['Ingrediente'] == insumo_a_editar
                     df_base.loc[mask, 'Ingrediente'] = nuevo_nombre_insumo.strip()
                     df_base.loc[mask, 'Unidad'] = nueva_unidad_insumo.strip()
