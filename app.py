@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Versión Web con Tabla y Exportación a JPG)
+Sistema Operativo de Banquetes - Medher (Versión Web con JPG e Icono)
 """
 
 import os
@@ -33,14 +33,19 @@ def guardar_recetas(df):
   df.to_csv(FILE_PATH, index=False)
 
 
-# Configuración visual de la página
+# --- CONFIGURACIÓN DE PÁGINA E ICONOS ---
+# Esto pone el icono en la pestaña del navegador (favicon)
 st.set_page_config(
-    page_title="Medher Banquetes y Más", page_icon="🍳", layout="centered"
+    page_title="Medher Banquetes y Más", 
+    page_icon="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png", 
+    layout="centered"
 )
 
+# Esto fuerza el icono para la pantalla de inicio en dispositivos iOS (iPhone/iPad)
 st.markdown(
     """
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png">
+    <link rel="shortcut icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png">
     """,
     unsafe_allow_html=True
 )
