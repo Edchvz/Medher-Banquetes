@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Gestor de Catálogo y Eliminación Corregida)
+Sistema Operativo de Banquetes - Medher (Gestor de Catálogo, Listas de Tienda y Edición Dinámica)
 """
 
 import os
@@ -10,12 +10,17 @@ import matplotlib.pyplot as plt
 import io
 
 FILE_PATH = "recetas_base.csv"
+FILE_LISTAS = "listas_compras.csv"
 CATEGORIAS = ["Abarrotes", "Carnicería", "Frutas y Verduras", "Lácteos y Refrigerados", "Desechables", "Bebidas", "Limpieza", "General"]
 
 # --- 1. INICIALIZACIÓN Y BASE DE DATOS ---
 if not os.path.exists(FILE_PATH):
   df_inicial = pd.DataFrame(columns=["Receta", "Platillos_Base", "Ingrediente", "Cantidad_Base", "Unidad", "Categoria"])
   df_inicial.to_csv(FILE_PATH, index=False)
+
+if not os.path.exists(FILE_LISTAS):
+  df_listas_inicial = pd.DataFrame(columns=["Tienda", "Ingrediente", "Cantidad", "Unidad", "Categoria"])
+  df_listas_inicial.to_csv(FILE_LISTAS, index=False)
 
 def cargar_recetas():
   df = pd.read_csv(FILE_PATH)
@@ -36,15 +41,28 @@ def guardar_recetas(df):
       repo = g.get_repo("Edchvz/Medher-Banquetes")
       contents = repo.get_contents(FILE_PATH, ref="main")
       csv_data = df.to_csv(index=False)
-      repo.update_file(
-          contents.path,
-          "Sincronización de recetas desde la App",
-          csv_data,
-          contents.sha,
-          branch="main"
-      )
+      repo.update_file(contents.path, "Sincronización de recetas", csv_data, contents.sha, branch="main")
     except Exception as e:
       st.error(f"Error al sincronizar con GitHub: {e}")
+
+def cargar_listas():
+  return pd.read_csv(FILE_LISTAS)
+
+def guardar_listas(df):
+  df.to_csv(FILE_LISTAS, index=False)
+  if "GITHUB_TOKEN" in st.secrets:
+    try:
+      from github import Github
+      g = Github(st.secrets["GITHUB_TOKEN"])
+      repo = g.get_repo("Edchvz/Medher-Banquetes")
+      csv_data = df.to_csv(index=False)
+      try:
+          contents = repo.get_contents(FILE_LISTAS, ref="main")
+          repo.update_file(contents.path, "Actualización lista de compras", csv_data, contents.sha, branch="main")
+      except: # Si el archivo no existe en GitHub todavía
+          repo.create_file(FILE_LISTAS, "Creación lista de compras", csv_data, branch="main")
+    except Exception as e:
+      st.error(f"Error al sincronizar listas con GitHub: {e}")
 
 def obtener_catalogo_insumos(df):
     if df.empty: return {}
@@ -52,7 +70,6 @@ def obtener_catalogo_insumos(df):
     for _, row in df.iterrows():
         catalogo[row['Ingrediente']] = {"Unidad": row['Unidad'], "Categoria": row['Categoria']}
     return catalogo
-
 
 # --- CONFIGURACIÓN DE PÁGINA E ICONOS ---
 st.set_page_config(
@@ -87,7 +104,7 @@ catalogo_maestro = obtener_catalogo_insumos(df_actual)
 lista_opciones_insumos = ["➕ Crear Nuevo Insumo..."] + sorted(list(catalogo_maestro.keys()))
 
 # Pestañas de navegación
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Escalar Producción", "➕ Nueva Receta", "🛠️ Modificar / Eliminar", "🍎 Catálogo de Insumos"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Escalar Producción", "➕ Nueva Receta", "🛠️ Modificar / Eliminar", "🍎 Catálogo Maestro", "🛒 Compras por Tienda"])
 
 # === PESTAÑA 1: CÁLCULO, EXTRAS Y EXPORTACIÓN ===
 with tab1:
@@ -245,14 +262,13 @@ with tab3:
         st.session_state.edit_ingredientes = df_receta_edit[['Categoria', 'Ingrediente', 'Cantidad_Base', 'Unidad']].to_dict('records')
         st.session_state.current_receta_loaded = receta_mod
 
-      # --- NUEVO: EDITOR DINÁMICO (CORREGIDO PARA MOSTRAR CASILLAS) ---
       st.write("Ingredientes actuales (**Haz doble clic** en cualquier celda para editarla o marca la casilla de la izquierda para borrar con 'Suprimir'):")
       
       edited_df = st.data_editor(
           pd.DataFrame(st.session_state.edit_ingredientes),
           num_rows="dynamic",
           use_container_width=True,
-          hide_index=False, # <-- CORRECCIÓN: Permite seleccionar filas
+          hide_index=False,
           column_config={
               "Categoria": st.column_config.SelectboxColumn("Categoría", options=CATEGORIAS, required=True),
               "Ingrediente": st.column_config.TextColumn("Ingrediente", required=True),
@@ -286,7 +302,6 @@ with tab3:
       st.markdown("<br>", unsafe_allow_html=True)
       col_btn1, col_btn2 = st.columns(2)
       
-      # BOTÓN DE AGREGAR
       with col_btn1:
           if st.button("➕ Agregar / Actualizar Insumo", use_container_width=True):
               if e_ing.strip() and e_uni.strip():
@@ -305,7 +320,6 @@ with tab3:
               else:
                   st.warning("Completa los datos del insumo.")
                   
-      # BOTÓN DE ELIMINAR PARA MÓVILES
       with col_btn2:
           col_sel, col_del = st.columns([3, 2])
           with col_sel:
@@ -344,10 +358,8 @@ with tab4:
             datos_actuales = catalogo_maestro[insumo_a_editar]
             
             col_c1, col_c2, col_c3 = st.columns(3)
-            with col_c1:
-                nuevo_nombre_insumo = st.text_input("Nombre del Insumo", value=insumo_a_editar, key="cat_nom")
-            with col_c2:
-                nueva_unidad_insumo = st.text_input("Unidad Predeterminada", value=datos_actuales["Unidad"], key="cat_uni")
+            with col_c1: nuevo_nombre_insumo = st.text_input("Nombre del Insumo", value=insumo_a_editar, key="cat_nom")
+            with col_c2: nueva_unidad_insumo = st.text_input("Unidad Predeterminada", value=datos_actuales["Unidad"], key="cat_uni")
             with col_c3:
                 try: idx_cat_cat = CATEGORIAS.index(datos_actuales["Categoria"])
                 except ValueError: idx_cat_cat = CATEGORIAS.index("General")
@@ -362,7 +374,122 @@ with tab4:
                     df_base.loc[mask, 'Ingrediente'] = nuevo_nombre_insumo.strip()
                     df_base.loc[mask, 'Unidad'] = nueva_unidad_insumo.strip()
                     df_base.loc[mask, 'Categoria'] = nueva_cat_insumo
-                    
                     guardar_recetas(df_base)
+                    
+                    df_compras = cargar_listas()
+                    mask_compras = df_compras['Ingrediente'] == insumo_a_editar
+                    if mask_compras.any():
+                        df_compras.loc[mask_compras, 'Ingrediente'] = nuevo_nombre_insumo.strip()
+                        df_compras.loc[mask_compras, 'Unidad'] = nueva_unidad_insumo.strip()
+                        df_compras.loc[mask_compras, 'Categoria'] = nueva_cat_insumo
+                        guardar_listas(df_compras)
+                        
                     st.success(f"¡El insumo '{nuevo_nombre_insumo}' fue actualizado con éxito en toda la base de datos!")
                     st.rerun()
+
+# === PESTAÑA 5: COMPRAS POR TIENDA ===
+with tab5:
+    st.subheader("🛒 Listas de Compras por Tienda")
+    st.write("Crea listas permanentes para compras de insumos generales o mayoreo (ej. Sam's USA, HEB, Central de Abastos).")
+    
+    df_listas = cargar_listas()
+    
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        tiendas_existentes = sorted(df_listas['Tienda'].unique().tolist()) if not df_listas.empty else []
+        tienda_sel = st.selectbox("Seleccionar Tienda", ["➕ Nueva Tienda..."] + tiendas_existentes)
+    with col_t2:
+        if tienda_sel == "➕ Nueva Tienda...":
+            tienda_activa = st.text_input("Nombre de la nueva tienda (ej. Sam's USA)")
+        else:
+            tienda_activa = tienda_sel
+
+    if tienda_activa:
+        st.markdown(f"### Lista de: **{tienda_activa}**")
+        df_tienda = df_listas[df_listas['Tienda'] == tienda_activa].copy()
+
+        st.write("Añadir un insumo a la lista de esta tienda:")
+        col_ti1, col_ti2 = st.columns([3, 1])
+        with col_ti1:
+            insumo_agregar = st.selectbox("Buscar insumo del catálogo", lista_opciones_insumos, key="tienda_insumo")
+        with col_ti2:
+            cant_agregar = st.number_input("Cantidad a agregar", min_value=0.01, value=1.0, step=1.0, key="tienda_cant")
+
+        if st.button("➕ Agregar a la tienda"):
+            if insumo_agregar != "➕ Crear Nuevo Insumo...":
+                datos_insumo = catalogo_maestro[insumo_agregar]
+                if insumo_agregar in df_tienda['Ingrediente'].values:
+                    idx = df_listas[(df_listas['Tienda'] == tienda_activa) & (df_listas['Ingrediente'] == insumo_agregar)].index
+                    df_listas.loc[idx, 'Cantidad'] += cant_agregar
+                else:
+                    nuevo_item = pd.DataFrame([{
+                        "Tienda": tienda_activa,
+                        "Ingrediente": insumo_agregar,
+                        "Cantidad": cant_agregar,
+                        "Unidad": datos_insumo["Unidad"],
+                        "Categoria": datos_insumo["Categoria"]
+                    }])
+                    df_listas = pd.concat([df_listas, nuevo_item], ignore_index=True)
+                
+                guardar_listas(df_listas)
+                st.success(f"{insumo_agregar} añadido a la lista.")
+                st.rerun()
+            else:
+                st.warning("Selecciona un insumo existente. Si necesitas uno nuevo, agrégalo en la pestaña 'Nueva Receta'.")
+
+        if not df_tienda.empty:
+            st.markdown("---")
+            st.write("Lista actual (**Puedes editar las cantidades o marcar la casilla izquierda para eliminar**):")
+            
+            edited_tienda = st.data_editor(
+                df_tienda,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=False,
+                column_config={
+                    "Tienda": None, 
+                    "Ingrediente": st.column_config.TextColumn("Ingrediente", disabled=True),
+                    "Cantidad": st.column_config.NumberColumn("Cantidad", min_value=0.00),
+                    "Unidad": st.column_config.TextColumn("Unidad", disabled=True),
+                    "Categoria": st.column_config.TextColumn("Categoría", disabled=True)
+                },
+                key=f"editor_tienda_{tienda_activa}"
+            )
+
+            if st.button("💾 Guardar Cambios de la Lista", type="primary"):
+                df_listas = df_listas[df_listas['Tienda'] != tienda_activa]
+                edited_tienda['Tienda'] = tienda_activa
+                df_listas = pd.concat([df_listas, edited_tienda], ignore_index=True)
+                guardar_listas(df_listas)
+                st.success("¡Lista actualizada con éxito!")
+                st.rerun()
+
+            st.markdown("---")
+            st.write("### Opciones de Exportación")
+            
+            texto_tienda = f"--- COMPRAS: {tienda_activa.upper()} ---\n"
+            for cat, grupo in edited_tienda.groupby("Categoria"):
+                texto_tienda += f"\n🛒 {cat.upper()}:\n"
+                for _, row in grupo.iterrows():
+                    texto_tienda += f" • {row['Ingrediente']}: {row['Cantidad']} {row['Unidad']}\n"
+            st.text_area("Texto formateado para WhatsApp:", texto_tienda, height=200)
+
+            def generar_jpg_tienda():
+                fig, ax = plt.subplots(figsize=(10, max(4, len(edited_tienda) * 0.4 + 2))) 
+                ax.axis('off'); ax.axis('tight')
+                ax.set_title(f"MEDHER BANQUETES Y MÁS\nLista de Compras: {tienda_activa.upper()}\n", fontsize=12, fontweight='bold', color='#2c3e50', pad=20)
+                
+                edited_sorted = edited_tienda.sort_values(by="Categoria")
+                table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in edited_sorted.iterrows()]
+                
+                table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center', colColours=['#2c3e50']*4)
+                table.auto_set_font_size(False); table.set_fontsize(10); table.scale(1.2, 1.5)
+                for key, cell in table.get_celld().items():
+                    cell.set_edgecolor('#bdc3c7')
+                    if key[0] == 0: cell.set_text_props(color='white', fontweight='bold'); cell.set_facecolor('#2c3e50')
+                    else: cell.set_facecolor('#ecf0f1' if key[0] % 2 == 0 else 'white')
+                buf = io.BytesIO()
+                plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300); plt.close(fig); buf.seek(0)
+                return buf
+
+            st.download_button("📥 Guardar Lista en Imagen (JPG)", data=generar_jpg_tienda(), file_name=f"Compras_{tienda_activa}.jpg", mime="image/jpeg")
