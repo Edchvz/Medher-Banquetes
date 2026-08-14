@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Gestor de Catálogo, Listas de Tienda y Edición Dinámica)
+Sistema Operativo de Banquetes - Medher (Gestor Completo de Catálogo y Tiendas)
 """
 
 import os
@@ -59,16 +59,21 @@ def guardar_listas(df):
       try:
           contents = repo.get_contents(FILE_LISTAS, ref="main")
           repo.update_file(contents.path, "Actualización lista de compras", csv_data, contents.sha, branch="main")
-      except: # Si el archivo no existe en GitHub todavía
+      except: 
           repo.create_file(FILE_LISTAS, "Creación lista de compras", csv_data, branch="main")
     except Exception as e:
       st.error(f"Error al sincronizar listas con GitHub: {e}")
 
-def obtener_catalogo_insumos(df):
-    if df.empty: return {}
+def obtener_catalogo_insumos(df_recetas, df_listas):
+    """Crea un catálogo único leyendo tanto de las recetas como de las listas de compras."""
+    if df_recetas.empty and df_listas.empty: return {}
     catalogo = {}
-    for _, row in df.iterrows():
-        catalogo[row['Ingrediente']] = {"Unidad": row['Unidad'], "Categoria": row['Categoria']}
+    if not df_recetas.empty:
+        for _, row in df_recetas.iterrows():
+            catalogo[row['Ingrediente']] = {"Unidad": row['Unidad'], "Categoria": row['Categoria']}
+    if not df_listas.empty:
+        for _, row in df_listas.iterrows():
+            catalogo[row['Ingrediente']] = {"Unidad": row['Unidad'], "Categoria": row['Categoria']}
     return catalogo
 
 # --- CONFIGURACIÓN DE PÁGINA E ICONOS ---
@@ -97,10 +102,11 @@ st.markdown(
 )
 st.caption("Sistema Operativo de Gestión y Escalado de Recetas")
 
-# Cargar datos
+# Cargar datos globales
 df_actual = cargar_recetas()
+df_listas_global = cargar_listas()
 recetas_unicas = sorted(df_actual["Receta"].unique().tolist()) if not df_actual.empty else []
-catalogo_maestro = obtener_catalogo_insumos(df_actual)
+catalogo_maestro = obtener_catalogo_insumos(df_actual, df_listas_global)
 lista_opciones_insumos = ["➕ Crear Nuevo Insumo..."] + sorted(list(catalogo_maestro.keys()))
 
 # Pestañas de navegación
@@ -392,11 +398,9 @@ with tab5:
     st.subheader("🛒 Listas de Compras por Tienda")
     st.write("Crea listas permanentes para compras de insumos generales o mayoreo (ej. Sam's USA, HEB, Central de Abastos).")
     
-    df_listas = cargar_listas()
-    
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        tiendas_existentes = sorted(df_listas['Tienda'].unique().tolist()) if not df_listas.empty else []
+        tiendas_existentes = sorted(df_listas_global['Tienda'].unique().tolist()) if not df_listas_global.empty else []
         tienda_sel = st.selectbox("Seleccionar Tienda", ["➕ Nueva Tienda..."] + tiendas_existentes)
     with col_t2:
         if tienda_sel == "➕ Nueva Tienda...":
@@ -406,36 +410,57 @@ with tab5:
 
     if tienda_activa:
         st.markdown(f"### Lista de: **{tienda_activa}**")
-        df_tienda = df_listas[df_listas['Tienda'] == tienda_activa].copy()
+        df_tienda = df_listas_global[df_listas_global['Tienda'] == tienda_activa].copy()
 
         st.write("Añadir un insumo a la lista de esta tienda:")
-        col_ti1, col_ti2 = st.columns([3, 1])
-        with col_ti1:
-            insumo_agregar = st.selectbox("Buscar insumo del catálogo", lista_opciones_insumos, key="tienda_insumo")
-        with col_ti2:
-            cant_agregar = st.number_input("Cantidad a agregar", min_value=0.01, value=1.0, step=1.0, key="tienda_cant")
+        
+        insumo_agregar = st.selectbox("🔍 Buscar en historial o crear nuevo:", lista_opciones_insumos, key="tienda_insumo")
+
+        col_ti1, col_ti2, col_ti3, col_ti4 = st.columns([3, 2, 2, 3])
+        
+        # Interfaz que cambia según si es crear nuevo o existente
+        if insumo_agregar == "➕ Crear Nuevo Insumo...":
+            with col_ti1: t_nuevo_nom = st.text_input("Nombre del Insumo", key="t_nuevo_nom")
+            with col_ti2: t_cant = st.number_input("Cantidad", min_value=0.01, value=1.0, step=1.0, key="t_cant_nuevo")
+            with col_ti3: t_nuevo_uni = st.text_input("Unidad", key="t_nuevo_uni")
+            with col_ti4: t_nuevo_cat = st.selectbox("Categoría", CATEGORIAS, key="t_nuevo_cat")
+        else:
+            datos_insumo = catalogo_maestro[insumo_agregar]
+            with col_ti1: st.text_input("Nombre del Insumo", value=insumo_agregar, disabled=True, key="t_nom_dis")
+            with col_ti2: t_cant = st.number_input("Cantidad", min_value=0.01, value=1.0, step=1.0, key="t_cant_exist")
+            with col_ti3: st.text_input("Unidad", value=datos_insumo["Unidad"], disabled=True, key="t_uni_dis")
+            with col_ti4: st.text_input("Categoría", value=datos_insumo["Categoria"], disabled=True, key="t_cat_dis")
 
         if st.button("➕ Agregar a la tienda"):
-            if insumo_agregar != "➕ Crear Nuevo Insumo...":
-                datos_insumo = catalogo_maestro[insumo_agregar]
-                if insumo_agregar in df_tienda['Ingrediente'].values:
-                    idx = df_listas[(df_listas['Tienda'] == tienda_activa) & (df_listas['Ingrediente'] == insumo_agregar)].index
-                    df_listas.loc[idx, 'Cantidad'] += cant_agregar
+            if insumo_agregar == "➕ Crear Nuevo Insumo...":
+                if t_nuevo_nom.strip() and t_nuevo_uni.strip():
+                    insumo_final = t_nuevo_nom.strip()
+                    uni_final = t_nuevo_uni.strip()
+                    cat_final = t_nuevo_cat
                 else:
-                    nuevo_item = pd.DataFrame([{
-                        "Tienda": tienda_activa,
-                        "Ingrediente": insumo_agregar,
-                        "Cantidad": cant_agregar,
-                        "Unidad": datos_insumo["Unidad"],
-                        "Categoria": datos_insumo["Categoria"]
-                    }])
-                    df_listas = pd.concat([df_listas, nuevo_item], ignore_index=True)
-                
-                guardar_listas(df_listas)
-                st.success(f"{insumo_agregar} añadido a la lista.")
-                st.rerun()
+                    st.warning("Completa el nombre y la unidad del nuevo insumo.")
+                    st.stop()
             else:
-                st.warning("Selecciona un insumo existente. Si necesitas uno nuevo, agrégalo en la pestaña 'Nueva Receta'.")
+                insumo_final = insumo_agregar
+                uni_final = datos_insumo["Unidad"]
+                cat_final = datos_insumo["Categoria"]
+
+            if insumo_final in df_tienda['Ingrediente'].values:
+                idx = df_listas_global[(df_listas_global['Tienda'] == tienda_activa) & (df_listas_global['Ingrediente'] == insumo_final)].index
+                df_listas_global.loc[idx, 'Cantidad'] += t_cant
+            else:
+                nuevo_item = pd.DataFrame([{
+                    "Tienda": tienda_activa,
+                    "Ingrediente": insumo_final,
+                    "Cantidad": t_cant,
+                    "Unidad": uni_final,
+                    "Categoria": cat_final
+                }])
+                df_listas_global = pd.concat([df_listas_global, nuevo_item], ignore_index=True)
+            
+            guardar_listas(df_listas_global)
+            st.success(f"{insumo_final} añadido a la lista.")
+            st.rerun()
 
         if not df_tienda.empty:
             st.markdown("---")
@@ -457,10 +482,10 @@ with tab5:
             )
 
             if st.button("💾 Guardar Cambios de la Lista", type="primary"):
-                df_listas = df_listas[df_listas['Tienda'] != tienda_activa]
+                df_listas_global = df_listas_global[df_listas_global['Tienda'] != tienda_activa]
                 edited_tienda['Tienda'] = tienda_activa
-                df_listas = pd.concat([df_listas, edited_tienda], ignore_index=True)
-                guardar_listas(df_listas)
+                df_listas_global = pd.concat([df_listas_global, edited_tienda], ignore_index=True)
+                guardar_listas(df_listas_global)
                 st.success("¡Lista actualizada con éxito!")
                 st.rerun()
 
