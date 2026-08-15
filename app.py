@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Gestor Completo con Corrección de Estado)
+Sistema Operativo de Banquetes - Medher (Actualización de Estado Dinámico de Campos)
 """
 
 import os
@@ -224,10 +224,10 @@ with tab2:
             with col_ti4: t_nuevo_cat = st.selectbox("Categoría", CATEGORIAS, key="t_nuevo_cat")
         else:
             datos_insumo = catalogo_maestro[insumo_agregar]
-            with col_ti1: st.text_input("Nombre del Insumo", value=insumo_agregar, disabled=True, key="t_nom_dis")
-            with col_ti2: t_cant = st.number_input("Cantidad", min_value=0.01, value=1.0, step=1.0, key="t_cant_exist")
-            with col_ti3: st.text_input("Unidad", value=datos_insumo["Unidad"], disabled=True, key="t_uni_dis")
-            with col_ti4: st.text_input("Categoría", value=datos_insumo["Categoria"], disabled=True, key="t_cat_dis")
+            with col_ti1: st.text_input("Nombre del Insumo", value=insumo_agregar, disabled=True, key=f"t_nom_dis_{insumo_agregar}")
+            with col_ti2: t_cant = st.number_input("Cantidad", min_value=0.01, value=1.0, step=1.0, key=f"t_cant_exist_{insumo_agregar}")
+            with col_ti3: st.text_input("Unidad", value=datos_insumo["Unidad"], disabled=True, key=f"t_uni_dis_{insumo_agregar}")
+            with col_ti4: st.text_input("Categoría", value=datos_insumo["Categoria"], disabled=True, key=f"t_cat_dis_{insumo_agregar}")
 
         if st.button("➕ Agregar a la tienda"):
             if insumo_agregar == "➕ Crear Nuevo Insumo...":
@@ -341,10 +341,10 @@ with tab3:
       unidad_insumo = datos_insumo["Unidad"]
       cat_insumo = datos_insumo["Categoria"]
       
-      with col_i1: st.text_input("Nombre del Insumo", value=insumo, disabled=True, key="e_insumo_dis")
-      with col_i2: cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="e_cant")
-      with col_i3: st.text_input("Unidad", value=unidad_insumo, disabled=True, key="e_uni_dis")
-      with col_i4: st.text_input("Categoría", value=cat_insumo, disabled=True, key="e_cat_dis")
+      with col_i1: st.text_input("Nombre del Insumo", value=insumo, disabled=True, key=f"e_insumo_dis_{modo_insumo}")
+      with col_i2: cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key=f"e_cant_{modo_insumo}")
+      with col_i3: st.text_input("Unidad", value=unidad_insumo, disabled=True, key=f"e_uni_dis_{modo_insumo}")
+      with col_i4: st.text_input("Categoría", value=cat_insumo, disabled=True, key=f"e_cat_dis_{modo_insumo}")
 
   if st.button("+ Agregar Insumo a la Lista"):
     if insumo.strip() and unidad_insumo.strip():
@@ -434,10 +434,10 @@ with tab4:
           ed_uni = datos_insumo_ed["Unidad"]
           ed_cat = datos_insumo_ed["Categoria"]
           
-          with col_e1: st.text_input("Nombre del Insumo", value=ed_ing, disabled=True, key="ed_e_ing_dis")
-          with col_e2: ed_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="ed_e_cant")
-          with col_e3: st.text_input("Unidad", value=ed_uni, disabled=True, key="ed_e_uni_dis")
-          with col_e4: st.text_input("Categoría", value=ed_cat, disabled=True, key="ed_e_cat_dis")
+          with col_e1: st.text_input("Nombre del Insumo", value=ed_ing, disabled=True, key=f"ed_e_ing_dis_{modo_insumo_ed}")
+          with col_e2: ed_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key=f"ed_e_cant_{modo_insumo_ed}")
+          with col_e3: st.text_input("Unidad", value=ed_uni, disabled=True, key=f"ed_e_uni_dis_{modo_insumo_ed}")
+          with col_e4: st.text_input("Categoría", value=ed_cat, disabled=True, key=f"ed_e_cat_dis_{modo_insumo_ed}")
 
       st.markdown("<br>", unsafe_allow_html=True)
       col_btn1, col_btn2 = st.columns(2)
@@ -498,12 +498,12 @@ with tab5:
             datos_actuales = catalogo_maestro[insumo_a_editar]
             
             col_c1, col_c2, col_c3 = st.columns(3)
-            with col_c1: nuevo_nombre_insumo = st.text_input("Nombre del Insumo", value=insumo_a_editar, key="cat_nom")
-            with col_c2: nueva_unidad_insumo = st.text_input("Unidad Predeterminada", value=datos_actuales["Unidad"], key="cat_uni")
+            with col_c1: nuevo_nombre_insumo = st.text_input("Nombre del Insumo", value=insumo_a_editar, key=f"cat_nom_{insumo_a_editar}")
+            with col_c2: nueva_unidad_insumo = st.text_input("Unidad Predeterminada", value=datos_actuales["Unidad"], key=f"cat_uni_{insumo_a_editar}")
             with col_c3:
                 try: idx_cat_cat = CATEGORIAS.index(datos_actuales["Categoria"])
                 except ValueError: idx_cat_cat = CATEGORIAS.index("General")
-                nueva_cat_insumo = st.selectbox("Categoría", CATEGORIAS, index=idx_cat_cat, key="cat_cat")
+                nueva_cat_insumo = st.selectbox("Categoría", CATEGORIAS, index=idx_cat_cat, key=f"cat_cat_{insumo_a_editar}")
                 
             if st.button("💾 Guardar Cambios en Todo el Sistema", type="primary"):
                 if not nuevo_nombre_insumo.strip():
