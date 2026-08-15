@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Gestor Completo de Catálogo y Tiendas)
+Sistema Operativo de Banquetes - Medher (Gestor Completo con Corrección de Estado)
 """
 
 import os
@@ -65,7 +65,6 @@ def guardar_listas(df):
       st.error(f"Error al sincronizar listas con GitHub: {e}")
 
 def obtener_catalogo_insumos(df_recetas, df_listas):
-    """Crea un catálogo único leyendo tanto de las recetas como de las listas de compras."""
     if df_recetas.empty and df_listas.empty: return {}
     catalogo = {}
     if not df_recetas.empty:
@@ -110,7 +109,13 @@ catalogo_maestro = obtener_catalogo_insumos(df_actual, df_listas_global)
 lista_opciones_insumos = ["➕ Crear Nuevo Insumo..."] + sorted(list(catalogo_maestro.keys()))
 
 # Pestañas de navegación
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Escalar Producción", "➕ Nueva Receta", "🛠️ Modificar / Eliminar", "🍎 Catálogo Maestro", "🛒 Compras por Tienda"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📊 Escalar Producción", 
+    "🛒 Compras por Tienda", 
+    "➕ Nueva Receta", 
+    "🛠️ Modificar / Eliminar", 
+    "🍎 Catálogo Maestro"
+])
 
 # === PESTAÑA 1: CÁLCULO, EXTRAS Y EXPORTACIÓN ===
 with tab1:
@@ -187,214 +192,8 @@ with tab1:
 
       st.download_button("📥 Guardar Reporte en Imagen (JPG)", data=generar_jpg(), file_name=f"Produccion_{st.session_state.receta_activa}_{st.session_state.platillos_activos}pax.jpg", mime="image/jpeg")
 
-# === PESTAÑA 2: NUEVA RECETA ===
+# === PESTAÑA 2: COMPRAS POR TIENDA ===
 with tab2:
-  st.subheader("Registrar Nueva Receta")
-  nombre_nueva = st.text_input("Nombre de la Receta", key="nombre_nueva_receta")
-  base_nueva = st.number_input("Platillos Base (Rendimiento)", min_value=1.0, value=10.0, step=1.0, key="base_nueva_receta")
-
-  st.markdown("---")
-  st.write("Añadir Insumos (Catálogo Inteligente):")
-  if "temp_ingredientes" not in st.session_state: st.session_state.temp_ingredientes = []
-
-  modo_insumo = st.selectbox("🔍 Buscar en historial o crear nuevo:", lista_opciones_insumos, key="sel_cat_nuevo")
-  col_i1, col_i2, col_i3, col_i4 = st.columns([3, 2, 2, 3])
-  
-  if modo_insumo == "➕ Crear Nuevo Insumo...":
-      with col_i1: insumo = st.text_input("Nombre del Insumo", key="input_insumo")
-      with col_i2: cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="input_cant")
-      with col_i3: unidad_insumo = st.text_input("Unidad", key="input_uni")
-      with col_i4: cat_insumo = st.selectbox("Categoría", CATEGORIAS, key="input_cat")
-  else:
-      datos_insumo = catalogo_maestro[modo_insumo]
-      try: idx_cat = CATEGORIAS.index(datos_insumo["Categoria"])
-      except ValueError: idx_cat = CATEGORIAS.index("General")
-      with col_i1: insumo = st.text_input("Nombre del Insumo", value=modo_insumo, disabled=True, key="input_insumo")
-      with col_i2: cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="input_cant")
-      with col_i3: unidad_insumo = st.text_input("Unidad", value=datos_insumo["Unidad"], key="input_uni")
-      with col_i4: cat_insumo = st.selectbox("Categoría", CATEGORIAS, index=idx_cat, key="input_cat")
-
-  if st.button("+ Agregar Insumo a la Lista"):
-    if insumo.strip() and unidad_insumo.strip():
-      st.session_state.temp_ingredientes.append({"Categoria": cat_insumo, "Ingrediente": insumo.strip(), "Cantidad_Base": cant_insumo, "Unidad": unidad_insumo.strip()})
-      st.success(f"Insumo agregado: {insumo} ({cat_insumo})")
-    else:
-      st.warning("Completa el nombre del insumo y la unidad.")
-
-  if st.session_state.temp_ingredientes:
-    st.dataframe(pd.DataFrame(st.session_state.temp_ingredientes), use_container_width=True)
-    if st.button("Guardar Receta en Base de Datos"):
-      if not nombre_nueva.strip(): st.error("Asigna un nombre a la receta.")
-      else:
-        df_verificar = cargar_recetas()
-        if not df_verificar.empty and (df_verificar['Receta'].astype(str).str.lower() == nombre_nueva.strip().lower()).any(): st.error("La receta ya existe en la base de datos.")
-        else:
-          nuevos_datos = [{'Receta': nombre_nueva.strip(), 'Platillos_Base': base_nueva, **item} for item in st.session_state.temp_ingredientes]
-          df_actualizado = pd.concat([df_verificar, pd.DataFrame(nuevos_datos)], ignore_index=True) if not df_verificar.empty else pd.DataFrame(nuevos_datos)
-          guardar_recetas(df_actualizado)
-          st.success(f"¡Receta '{nombre_nueva}' guardada permanentemente en la nube!")
-          st.session_state.temp_ingredientes.clear()
-          st.rerun()
-
-# === PESTAÑA 3: MODIFICAR / ELIMINAR ===
-with tab3:
-  st.subheader("Modificar o Eliminar Recetas")
-
-  if not recetas_unicas:
-    st.info("No hay recetas disponibles para modificar.")
-  else:
-    receta_mod = st.selectbox("Seleccionar Receta", recetas_unicas, key="select_modificar")
-
-    col_m1, col_m2 = st.columns(2)
-    with col_m1: cargar_edicion = st.button("Cargar para Editar")
-    with col_m2: eliminar_completa = st.button("🗑️ ELIMINAR RECETA COMPLETA")
-
-    if eliminar_completa:
-      df_limpio = df_actual[~(df_actual['Receta'].astype(str).str.lower() == receta_mod.lower())].reset_index(drop=True)
-      guardar_recetas(df_limpio)
-      st.success(f"Receta '{receta_mod}' eliminada definitivamente.")
-      st.rerun()
-
-    if cargar_edicion or ("receta_en_edicion" in st.session_state and st.session_state.receta_en_edicion == receta_mod):
-      st.session_state.receta_en_edicion = receta_mod
-      filtro_ed = df_actual['Receta'].astype(str).str.lower() == receta_mod.lower()
-      df_receta_edit = df_actual[filtro_ed]
-
-      st.markdown(f"### Modificando: {receta_mod}")
-      nuevo_nombre_receta = st.text_input("Nombre de la Receta", value=receta_mod, key="edit_nombre_receta")
-      nuevo_base_mod = st.number_input("Platillos Base", value=float(df_receta_edit['Platillos_Base'].iloc[0]), step=1.0, key="edit_base")
-
-      if "edit_ingredientes" not in st.session_state or st.session_state.get("current_receta_loaded") != receta_mod:
-        st.session_state.edit_ingredientes = df_receta_edit[['Categoria', 'Ingrediente', 'Cantidad_Base', 'Unidad']].to_dict('records')
-        st.session_state.current_receta_loaded = receta_mod
-
-      st.write("Ingredientes actuales (**Haz doble clic** en cualquier celda para editarla o marca la casilla de la izquierda para borrar con 'Suprimir'):")
-      
-      edited_df = st.data_editor(
-          pd.DataFrame(st.session_state.edit_ingredientes),
-          num_rows="dynamic",
-          use_container_width=True,
-          hide_index=False,
-          column_config={
-              "Categoria": st.column_config.SelectboxColumn("Categoría", options=CATEGORIAS, required=True),
-              "Ingrediente": st.column_config.TextColumn("Ingrediente", required=True),
-              "Cantidad_Base": st.column_config.NumberColumn("Cantidad Base", min_value=0.01, required=True),
-              "Unidad": st.column_config.TextColumn("Unidad", required=True)
-          },
-          key="data_editor_receta"
-      )
-      
-      st.session_state.edit_ingredientes = edited_df.to_dict('records')
-
-      st.markdown("---")
-      st.write("Buscador de insumos (para agregar nuevos desde el catálogo):")
-      modo_insumo_ed = st.selectbox("🔍 Buscar en historial o crear nuevo:", lista_opciones_insumos, key="sel_cat_ed")
-
-      col_e1, col_e2, col_e3, col_e4 = st.columns([3, 2, 2, 3])
-      if modo_insumo_ed == "➕ Crear Nuevo Insumo...":
-          with col_e1: e_ing = st.text_input("Nombre del Insumo", key="e_ing")
-          with col_e2: e_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="e_cant")
-          with col_e3: e_uni = st.text_input("Unidad", key="e_uni")
-          with col_e4: e_cat = st.selectbox("Categoría", CATEGORIAS, key="e_cat")
-      else:
-          datos_insumo_ed = catalogo_maestro[modo_insumo_ed]
-          try: idx_cat_ed = CATEGORIAS.index(datos_insumo_ed["Categoria"])
-          except ValueError: idx_cat_ed = CATEGORIAS.index("General")
-          with col_e1: e_ing = st.text_input("Nombre del Insumo", value=modo_insumo_ed, disabled=True, key="e_ing")
-          with col_e2: e_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="e_cant")
-          with col_e3: e_uni = st.text_input("Unidad", value=datos_insumo_ed["Unidad"], key="e_uni")
-          with col_e4: e_cat = st.selectbox("Categoría", CATEGORIAS, index=idx_cat_ed, key="e_cat")
-
-      st.markdown("<br>", unsafe_allow_html=True)
-      col_btn1, col_btn2 = st.columns(2)
-      
-      with col_btn1:
-          if st.button("➕ Agregar / Actualizar Insumo", use_container_width=True):
-              if e_ing.strip() and e_uni.strip():
-                  insumo_nombre = e_ing.strip()
-                  encontrado = False
-                  for item in st.session_state.edit_ingredientes:
-                      if item['Ingrediente'].lower() == insumo_nombre.lower():
-                          item['Cantidad_Base'] = e_cant
-                          item['Unidad'] = e_uni.strip()
-                          item['Categoria'] = e_cat
-                          encontrado = True
-                          break
-                  if not encontrado:
-                      st.session_state.edit_ingredientes.append({"Categoria": e_cat, "Ingrediente": insumo_nombre, "Cantidad_Base": e_cant, "Unidad": e_uni.strip()})
-                  st.rerun()
-              else:
-                  st.warning("Completa los datos del insumo.")
-                  
-      with col_btn2:
-          col_sel, col_del = st.columns([3, 2])
-          with col_sel:
-              ing_a_quitar = st.selectbox("Eliminar insumo:", [item['Ingrediente'] for item in st.session_state.edit_ingredientes] if st.session_state.edit_ingredientes else ["Ninguno"], label_visibility="collapsed", key="quitar_ing")
-          with col_del:
-              if st.button("🗑️ Quitar Insumo", use_container_width=True) and ing_a_quitar != "Ninguno":
-                  st.session_state.edit_ingredientes = [item for item in st.session_state.edit_ingredientes if item['Ingrediente'] != ing_a_quitar]
-                  st.rerun()
-
-      st.markdown("<br>", unsafe_allow_html=True)
-      if st.button("💾 Sobrescribir y Guardar Cambios Definitivos de la Receta", type="primary"):
-        if not nuevo_nombre_receta.strip(): st.error("El nombre de la receta no puede estar vacío.")
-        elif not st.session_state.edit_ingredientes: st.error("La receta debe tener al menos un ingrediente.")
-        else:
-          df_base = cargar_recetas()
-          df_base = df_base[~(df_base['Receta'].astype(str).str.lower() == receta_mod.lower())].reset_index(drop=True)
-          nuevos_cambios = [{'Receta': nuevo_nombre_receta.strip(), 'Platillos_Base': nuevo_base_mod, **item} for item in st.session_state.edit_ingredientes]
-          df_final_mod = pd.concat([df_base, pd.DataFrame(nuevos_cambios)], ignore_index=True) if not df_base.empty else pd.DataFrame(nuevos_cambios)
-          guardar_recetas(df_final_mod)
-          st.success("¡Cambios guardados con éxito permanentemente!")
-          del st.session_state.receta_en_edicion
-          del st.session_state.edit_ingredientes
-          st.rerun()
-
-# === PESTAÑA 4: CATÁLOGO DE INSUMOS ===
-with tab4:
-    st.subheader("🍎 Gestor del Catálogo Maestro")
-    st.info("Al modificar un insumo aquí, se actualizará automáticamente en **todas las recetas** donde haya sido utilizado históricamente.")
-    
-    if not catalogo_maestro:
-        st.write("El catálogo está vacío. Agrega recetas primero.")
-    else:
-        insumo_a_editar = st.selectbox("Seleccionar Insumo para Editar", sorted(list(catalogo_maestro.keys())), key="cat_edit_sel")
-        
-        if insumo_a_editar:
-            datos_actuales = catalogo_maestro[insumo_a_editar]
-            
-            col_c1, col_c2, col_c3 = st.columns(3)
-            with col_c1: nuevo_nombre_insumo = st.text_input("Nombre del Insumo", value=insumo_a_editar, key="cat_nom")
-            with col_c2: nueva_unidad_insumo = st.text_input("Unidad Predeterminada", value=datos_actuales["Unidad"], key="cat_uni")
-            with col_c3:
-                try: idx_cat_cat = CATEGORIAS.index(datos_actuales["Categoria"])
-                except ValueError: idx_cat_cat = CATEGORIAS.index("General")
-                nueva_cat_insumo = st.selectbox("Categoría", CATEGORIAS, index=idx_cat_cat, key="cat_cat")
-                
-            if st.button("💾 Guardar Cambios en Todo el Sistema", type="primary"):
-                if not nuevo_nombre_insumo.strip():
-                    st.error("El nombre no puede estar vacío.")
-                else:
-                    df_base = cargar_recetas()
-                    mask = df_base['Ingrediente'] == insumo_a_editar
-                    df_base.loc[mask, 'Ingrediente'] = nuevo_nombre_insumo.strip()
-                    df_base.loc[mask, 'Unidad'] = nueva_unidad_insumo.strip()
-                    df_base.loc[mask, 'Categoria'] = nueva_cat_insumo
-                    guardar_recetas(df_base)
-                    
-                    df_compras = cargar_listas()
-                    mask_compras = df_compras['Ingrediente'] == insumo_a_editar
-                    if mask_compras.any():
-                        df_compras.loc[mask_compras, 'Ingrediente'] = nuevo_nombre_insumo.strip()
-                        df_compras.loc[mask_compras, 'Unidad'] = nueva_unidad_insumo.strip()
-                        df_compras.loc[mask_compras, 'Categoria'] = nueva_cat_insumo
-                        guardar_listas(df_compras)
-                        
-                    st.success(f"¡El insumo '{nuevo_nombre_insumo}' fue actualizado con éxito en toda la base de datos!")
-                    st.rerun()
-
-# === PESTAÑA 5: COMPRAS POR TIENDA ===
-with tab5:
     st.subheader("🛒 Listas de Compras por Tienda")
     st.write("Crea listas permanentes para compras de insumos generales o mayoreo (ej. Sam's USA, HEB, Central de Abastos).")
     
@@ -418,7 +217,6 @@ with tab5:
 
         col_ti1, col_ti2, col_ti3, col_ti4 = st.columns([3, 2, 2, 3])
         
-        # Interfaz que cambia según si es crear nuevo o existente
         if insumo_agregar == "➕ Crear Nuevo Insumo...":
             with col_ti1: t_nuevo_nom = st.text_input("Nombre del Insumo", key="t_nuevo_nom")
             with col_ti2: t_cant = st.number_input("Cantidad", min_value=0.01, value=1.0, step=1.0, key="t_cant_nuevo")
@@ -518,3 +316,213 @@ with tab5:
                 return buf
 
             st.download_button("📥 Guardar Lista en Imagen (JPG)", data=generar_jpg_tienda(), file_name=f"Compras_{tienda_activa}.jpg", mime="image/jpeg")
+
+# === PESTAÑA 3: NUEVA RECETA ===
+with tab3:
+  st.subheader("Registrar Nueva Receta")
+  nombre_nueva = st.text_input("Nombre de la Receta", key="nombre_nueva_receta")
+  base_nueva = st.number_input("Platillos Base (Rendimiento)", min_value=1.0, value=10.0, step=1.0, key="base_nueva_receta")
+
+  st.markdown("---")
+  st.write("Añadir Insumos (Catálogo Inteligente):")
+  if "temp_ingredientes" not in st.session_state: st.session_state.temp_ingredientes = []
+
+  modo_insumo = st.selectbox("🔍 Buscar en historial o crear nuevo:", lista_opciones_insumos, key="sel_cat_nuevo")
+  col_i1, col_i2, col_i3, col_i4 = st.columns([3, 2, 2, 3])
+  
+  if modo_insumo == "➕ Crear Nuevo Insumo...":
+      with col_i1: insumo = st.text_input("Nombre del Insumo", key="n_insumo")
+      with col_i2: cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="n_cant")
+      with col_i3: unidad_insumo = st.text_input("Unidad", key="n_uni")
+      with col_i4: cat_insumo = st.selectbox("Categoría", CATEGORIAS, key="n_cat")
+  else:
+      datos_insumo = catalogo_maestro[modo_insumo]
+      insumo = modo_insumo
+      unidad_insumo = datos_insumo["Unidad"]
+      cat_insumo = datos_insumo["Categoria"]
+      
+      with col_i1: st.text_input("Nombre del Insumo", value=insumo, disabled=True, key="e_insumo_dis")
+      with col_i2: cant_insumo = st.number_input("Cantidad", min_value=0.01, value=1.0, step=0.1, key="e_cant")
+      with col_i3: st.text_input("Unidad", value=unidad_insumo, disabled=True, key="e_uni_dis")
+      with col_i4: st.text_input("Categoría", value=cat_insumo, disabled=True, key="e_cat_dis")
+
+  if st.button("+ Agregar Insumo a la Lista"):
+    if insumo.strip() and unidad_insumo.strip():
+      st.session_state.temp_ingredientes.append({"Categoria": cat_insumo, "Ingrediente": insumo.strip(), "Cantidad_Base": cant_insumo, "Unidad": unidad_insumo.strip()})
+      st.success(f"Insumo agregado: {insumo} ({cat_insumo})")
+    else:
+      st.warning("Completa el nombre del insumo y la unidad.")
+
+  if st.session_state.temp_ingredientes:
+    st.dataframe(pd.DataFrame(st.session_state.temp_ingredientes), use_container_width=True)
+    if st.button("Guardar Receta en Base de Datos"):
+      if not nombre_nueva.strip(): st.error("Asigna un nombre a la receta.")
+      else:
+        df_verificar = cargar_recetas()
+        if not df_verificar.empty and (df_verificar['Receta'].astype(str).str.lower() == nombre_nueva.strip().lower()).any(): st.error("La receta ya existe en la base de datos.")
+        else:
+          nuevos_datos = [{'Receta': nombre_nueva.strip(), 'Platillos_Base': base_nueva, **item} for item in st.session_state.temp_ingredientes]
+          df_actualizado = pd.concat([df_verificar, pd.DataFrame(nuevos_datos)], ignore_index=True) if not df_verificar.empty else pd.DataFrame(nuevos_datos)
+          guardar_recetas(df_actualizado)
+          st.success(f"¡Receta '{nombre_nueva}' guardada permanentemente en la nube!")
+          st.session_state.temp_ingredientes.clear()
+          st.rerun()
+
+# === PESTAÑA 4: MODIFICAR / ELIMINAR ===
+with tab4:
+  st.subheader("Modificar o Eliminar Recetas")
+
+  if not recetas_unicas:
+    st.info("No hay recetas disponibles para modificar.")
+  else:
+    receta_mod = st.selectbox("Seleccionar Receta", recetas_unicas, key="select_modificar")
+
+    col_m1, col_m2 = st.columns(2)
+    with col_m1: cargar_edicion = st.button("Cargar para Editar")
+    with col_m2: eliminar_completa = st.button("🗑️ ELIMINAR RECETA COMPLETA")
+
+    if eliminar_completa:
+      df_limpio = df_actual[~(df_actual['Receta'].astype(str).str.lower() == receta_mod.lower())].reset_index(drop=True)
+      guardar_recetas(df_limpio)
+      st.success(f"Receta '{receta_mod}' eliminada definitivamente.")
+      st.rerun()
+
+    if cargar_edicion or ("receta_en_edicion" in st.session_state and st.session_state.receta_en_edicion == receta_mod):
+      st.session_state.receta_en_edicion = receta_mod
+      filtro_ed = df_actual['Receta'].astype(str).str.lower() == receta_mod.lower()
+      df_receta_edit = df_actual[filtro_ed]
+
+      st.markdown(f"### Modificando: {receta_mod}")
+      nuevo_nombre_receta = st.text_input("Nombre de la Receta", value=receta_mod, key="edit_nombre_receta")
+      nuevo_base_mod = st.number_input("Platillos Base", value=float(df_receta_edit['Platillos_Base'].iloc[0]), step=1.0, key="edit_base")
+
+      if "edit_ingredientes" not in st.session_state or st.session_state.get("current_receta_loaded") != receta_mod:
+        st.session_state.edit_ingredientes = df_receta_edit[['Categoria', 'Ingrediente', 'Cantidad_Base', 'Unidad']].to_dict('records')
+        st.session_state.current_receta_loaded = receta_mod
+
+      st.write("Ingredientes actuales (**Haz doble clic** en cualquier celda para editarla o marca la casilla de la izquierda para borrar con 'Suprimir'):")
+      
+      edited_df = st.data_editor(
+          pd.DataFrame(st.session_state.edit_ingredientes),
+          num_rows="dynamic",
+          use_container_width=True,
+          hide_index=False,
+          column_config={
+              "Categoria": st.column_config.SelectboxColumn("Categoría", options=CATEGORIAS, required=True),
+              "Ingrediente": st.column_config.TextColumn("Ingrediente", required=True),
+              "Cantidad_Base": st.column_config.NumberColumn("Cantidad Base", min_value=0.01, required=True),
+              "Unidad": st.column_config.TextColumn("Unidad", required=True)
+          },
+          key="data_editor_receta"
+      )
+      
+      st.session_state.edit_ingredientes = edited_df.to_dict('records')
+
+      st.markdown("---")
+      st.write("Buscador de insumos (para agregar nuevos desde el catálogo):")
+      modo_insumo_ed = st.selectbox("🔍 Buscar en historial o crear nuevo:", lista_opciones_insumos, key="sel_cat_ed")
+
+      col_e1, col_e2, col_e3, col_e4 = st.columns([3, 2, 2, 3])
+      if modo_insumo_ed == "➕ Crear Nuevo Insumo...":
+          with col_e1: ed_ing = st.text_input("Nombre del Insumo", key="ed_n_ing")
+          with col_e2: ed_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="ed_n_cant")
+          with col_e3: ed_uni = st.text_input("Unidad", key="ed_n_uni")
+          with col_e4: ed_cat = st.selectbox("Categoría", CATEGORIAS, key="ed_n_cat")
+      else:
+          datos_insumo_ed = catalogo_maestro[modo_insumo_ed]
+          ed_ing = modo_insumo_ed
+          ed_uni = datos_insumo_ed["Unidad"]
+          ed_cat = datos_insumo_ed["Categoria"]
+          
+          with col_e1: st.text_input("Nombre del Insumo", value=ed_ing, disabled=True, key="ed_e_ing_dis")
+          with col_e2: ed_cant = st.number_input("Cantidad Base", min_value=0.01, value=1.0, step=0.1, key="ed_e_cant")
+          with col_e3: st.text_input("Unidad", value=ed_uni, disabled=True, key="ed_e_uni_dis")
+          with col_e4: st.text_input("Categoría", value=ed_cat, disabled=True, key="ed_e_cat_dis")
+
+      st.markdown("<br>", unsafe_allow_html=True)
+      col_btn1, col_btn2 = st.columns(2)
+      
+      with col_btn1:
+          if st.button("➕ Agregar / Actualizar Insumo", use_container_width=True):
+              if ed_ing.strip() and ed_uni.strip():
+                  insumo_nombre = ed_ing.strip()
+                  encontrado = False
+                  for item in st.session_state.edit_ingredientes:
+                      if item['Ingrediente'].lower() == insumo_nombre.lower():
+                          item['Cantidad_Base'] = ed_cant
+                          item['Unidad'] = ed_uni.strip()
+                          item['Categoria'] = ed_cat
+                          encontrado = True
+                          break
+                  if not encontrado:
+                      st.session_state.edit_ingredientes.append({"Categoria": ed_cat, "Ingrediente": insumo_nombre, "Cantidad_Base": ed_cant, "Unidad": ed_uni.strip()})
+                  st.rerun()
+              else:
+                  st.warning("Completa los datos del insumo.")
+                  
+      with col_btn2:
+          col_sel, col_del = st.columns([3, 2])
+          with col_sel:
+              ing_a_quitar = st.selectbox("Eliminar insumo:", [item['Ingrediente'] for item in st.session_state.edit_ingredientes] if st.session_state.edit_ingredientes else ["Ninguno"], label_visibility="collapsed", key="quitar_ing")
+          with col_del:
+              if st.button("🗑️ Quitar Insumo", use_container_width=True) and ing_a_quitar != "Ninguno":
+                  st.session_state.edit_ingredientes = [item for item in st.session_state.edit_ingredientes if item['Ingrediente'] != ing_a_quitar]
+                  st.rerun()
+
+      st.markdown("<br>", unsafe_allow_html=True)
+      if st.button("💾 Sobrescribir y Guardar Cambios Definitivos de la Receta", type="primary"):
+        if not nuevo_nombre_receta.strip(): st.error("El nombre de la receta no puede estar vacío.")
+        elif not st.session_state.edit_ingredientes: st.error("La receta debe tener al menos un ingrediente.")
+        else:
+          df_base = cargar_recetas()
+          df_base = df_base[~(df_base['Receta'].astype(str).str.lower() == receta_mod.lower())].reset_index(drop=True)
+          nuevos_cambios = [{'Receta': nuevo_nombre_receta.strip(), 'Platillos_Base': nuevo_base_mod, **item} for item in st.session_state.edit_ingredientes]
+          df_final_mod = pd.concat([df_base, pd.DataFrame(nuevos_cambios)], ignore_index=True) if not df_base.empty else pd.DataFrame(nuevos_cambios)
+          guardar_recetas(df_final_mod)
+          st.success("¡Cambios guardados con éxito permanentemente!")
+          del st.session_state.receta_en_edicion
+          del st.session_state.edit_ingredientes
+          st.rerun()
+
+# === PESTAÑA 5: CATÁLOGO DE INSUMOS ===
+with tab5:
+    st.subheader("🍎 Gestor del Catálogo Maestro")
+    st.info("Al modificar un insumo aquí, se actualizará automáticamente en **todas las recetas** donde haya sido utilizado históricamente.")
+    
+    if not catalogo_maestro:
+        st.write("El catálogo está vacío. Agrega recetas primero.")
+    else:
+        insumo_a_editar = st.selectbox("Seleccionar Insumo para Editar", sorted(list(catalogo_maestro.keys())), key="cat_edit_sel")
+        
+        if insumo_a_editar:
+            datos_actuales = catalogo_maestro[insumo_a_editar]
+            
+            col_c1, col_c2, col_c3 = st.columns(3)
+            with col_c1: nuevo_nombre_insumo = st.text_input("Nombre del Insumo", value=insumo_a_editar, key="cat_nom")
+            with col_c2: nueva_unidad_insumo = st.text_input("Unidad Predeterminada", value=datos_actuales["Unidad"], key="cat_uni")
+            with col_c3:
+                try: idx_cat_cat = CATEGORIAS.index(datos_actuales["Categoria"])
+                except ValueError: idx_cat_cat = CATEGORIAS.index("General")
+                nueva_cat_insumo = st.selectbox("Categoría", CATEGORIAS, index=idx_cat_cat, key="cat_cat")
+                
+            if st.button("💾 Guardar Cambios en Todo el Sistema", type="primary"):
+                if not nuevo_nombre_insumo.strip():
+                    st.error("El nombre no puede estar vacío.")
+                else:
+                    df_base = cargar_recetas()
+                    mask = df_base['Ingrediente'] == insumo_a_editar
+                    df_base.loc[mask, 'Ingrediente'] = nuevo_nombre_insumo.strip()
+                    df_base.loc[mask, 'Unidad'] = nueva_unidad_insumo.strip()
+                    df_base.loc[mask, 'Categoria'] = nueva_cat_insumo
+                    guardar_recetas(df_base)
+                    
+                    df_compras = cargar_listas()
+                    mask_compras = df_compras['Ingrediente'] == insumo_a_editar
+                    if mask_compras.any():
+                        df_compras.loc[mask_compras, 'Ingrediente'] = nuevo_nombre_insumo.strip()
+                        df_compras.loc[mask_compras, 'Unidad'] = nueva_unidad_insumo.strip()
+                        df_compras.loc[mask_compras, 'Categoria'] = nueva_cat_insumo
+                        guardar_listas(df_compras)
+                        
+                    st.success(f"¡El insumo '{nuevo_nombre_insumo}' fue actualizado con éxito en toda la base de datos!")
+                    st.rerun()
