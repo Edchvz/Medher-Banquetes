@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Diseño Exacto de Tabla Superior Dividida)
+Sistema Operativo de Banquetes - Medher (Diseño Superior Coloreado y Bordes Negros)
 """
 
 import os
@@ -186,63 +186,58 @@ with tab1:
         fig_height = max(6, header_height + (num_rows + 1) * row_height)
         
         fig, ax = plt.subplots(figsize=(8, fig_height))
-        # Ajustamos el sistema de coordenadas de 0 a 1 para dibujar fácilmente
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis('off')
         
         header_frac = header_height / fig_height
         
-        # Coordenadas Y para el encabezado superior
         y_top = 1 - 0.02
         y_bottom = 1 - header_frac + 0.03
         
         c_header = '#F48FB1'
         c_row1 = '#FCE4EC'
         c_row2 = '#FFFFFF'
-        c_edge = '#D81B60'
+        c_edge = 'black' # BORDES NEGROS
         
-        # --- TABLA SUPERIOR DIBUJADA MANUALMENTE ---
-        # Borde exterior del encabezado
-        rect = plt.Rectangle((0, y_bottom), 1, y_top - y_bottom, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5)
-        ax.add_patch(rect)
+        x_logo = 0.75
+        x_split = 0.35
+        row_h = (y_top - y_bottom) / 3
         
-        x_logo = 0.75  # Corte vertical para la zona del logo
-        x_split = 0.35 # Corte vertical entre títulos y valores (Orden y Platillos)
-        row_h = (y_top - y_bottom) / 3 # Altura de cada una de las 3 filas
+        # --- TABLA SUPERIOR DIBUJADA MANUALMENTE CON COLORES EXACTOS ---
+        # Fila 1: Nombre de empresa (Rosa Fuerte)
+        ax.add_patch(plt.Rectangle((0, y_top - row_h), x_logo, row_h, fill=True, facecolor=c_header, edgecolor=c_edge, lw=1.5))
+        # Fila 2: Orden de Produccion (Rosa Claro)
+        ax.add_patch(plt.Rectangle((0, y_top - 2*row_h), x_split, row_h, fill=True, facecolor=c_row1, edgecolor=c_edge, lw=1.5))
+        # Fila 2: Valor del Platillo (Blanco)
+        ax.add_patch(plt.Rectangle((x_split, y_top - 2*row_h), x_logo - x_split, row_h, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5))
+        # Fila 3: Platillos (Rosa Claro)
+        ax.add_patch(plt.Rectangle((0, y_bottom), x_split, row_h, fill=True, facecolor=c_row1, edgecolor=c_edge, lw=1.5))
+        # Fila 3: Valor de Cantidad (Blanco)
+        ax.add_patch(plt.Rectangle((x_split, y_bottom), x_logo - x_split, row_h, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5))
+        # Caja del Logo (Blanco para que empate con la imagen)
+        ax.add_patch(plt.Rectangle((x_logo, y_bottom), 1 - x_logo, y_top - y_bottom, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5))
         
-        # Trazar lineas internas exactas del boceto
-        ax.plot([x_logo, x_logo], [y_bottom, y_top], color=c_edge, lw=1.5) # Division Logo
-        ax.plot([0, x_logo], [y_top - row_h, y_top - row_h], color=c_edge, lw=1.5) # Fila 1 a 2
-        ax.plot([0, x_logo], [y_top - 2*row_h, y_top - 2*row_h], color=c_edge, lw=1.5) # Fila 2 a 3
-        ax.plot([x_split, x_split], [y_bottom, y_top - row_h], color=c_edge, lw=1.5) # Division textos col 1 y 2
+        # Textos en Negritas
+        pad = 0.02
+        ax.text(pad, y_top - row_h/2, "MEDHER BANQUETES Y MAS", ha='left', va='center', fontsize=12, fontweight='bold', color='black')
+        ax.text(pad, y_top - 1.5*row_h, "ORDEN DE PRODUCCION", ha='left', va='center', fontsize=11, fontweight='bold', color='black')
+        ax.text(x_split + pad, y_top - 1.5*row_h, st.session_state.receta_activa.upper(), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
+        ax.text(pad, y_top - 2.5*row_h, "PLATILLOS", ha='left', va='center', fontsize=11, fontweight='bold', color='black')
+        ax.text(x_split + pad, y_top - 2.5*row_h, str(st.session_state.platillos_activos), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
         
-        # Textos de la tabla superior alineados a la izquierda
-        pad = 0.02 # Margen interior
-        
-        # Fila 1
-        ax.text(pad, y_top - row_h/2, "MEDHER BANQUETES Y MAS", ha='left', va='center', fontsize=12, color='black')
-        # Fila 2
-        ax.text(pad, y_top - 1.5*row_h, "ORDEN DE PRODUCCION", ha='left', va='center', fontsize=11, color='black')
-        ax.text(x_split + pad, y_top - 1.5*row_h, st.session_state.receta_activa.upper(), ha='left', va='center', fontsize=11, color='black')
-        # Fila 3
-        ax.text(pad, y_top - 2.5*row_h, "PLATILLOS", ha='left', va='center', fontsize=11, color='black')
-        ax.text(x_split + pad, y_top - 2.5*row_h, str(st.session_state.platillos_activos), ha='left', va='center', fontsize=11, color='black')
-        
-        # Insertar Logo en el recuadro combinado de la derecha
+        # Insertar Logo ajustado a la medida de la caja
         try:
             url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
             logo_img = Image.open(urllib.request.urlopen(url_logo))
-            logo_img.thumbnail((110, 110))
+            logo_img.thumbnail((85, 85)) # Tamaño reducido para que no se desborde del recuadro
             imagebox = OffsetImage(logo_img, zoom=1)
-            # Centrado perfecto en la sección derecha
             ab = AnnotationBbox(imagebox, (x_logo + (1-x_logo)/2, y_bottom + (y_top-y_bottom)/2), xycoords='axes fraction', frameon=False, box_alignment=(0.5, 0.5))
             ax.add_artist(ab)
         except:
             pass
 
         # --- TABLA INFERIOR DE INSUMOS ---
-        # Toma el resto del lienzo hacia abajo
         data_bbox = [0, 0, 1, y_bottom - 0.02]
         table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in df_t.iterrows()]
         table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], cellLoc='center', bbox=data_bbox)
@@ -251,7 +246,7 @@ with tab1:
         table.set_fontsize(11)
         
         for key, cell in table.get_celld().items():
-            cell.set_edgecolor(c_edge)
+            cell.set_edgecolor(c_edge) # Bordes negros
             cell.set_text_props(color='black')
             if key[0] == 0: 
                 cell.set_text_props(fontweight='bold')
@@ -392,29 +387,30 @@ with tab2:
                 c_header = '#F48FB1'
                 c_row1 = '#FCE4EC'
                 c_row2 = '#FFFFFF'
-                c_edge = '#D81B60'
-                
-                # --- TABLA SUPERIOR MANUAL ---
-                rect = plt.Rectangle((0, y_bottom), 1, y_top - y_bottom, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5)
-                ax.add_patch(rect)
+                c_edge = 'black' # BORDES NEGROS
                 
                 x_logo = 0.75
                 x_split = 0.35
-                row_h = (y_top - y_bottom) / 2 # Esta tabla solo tiene 2 filas en lugar de 3
+                row_h = (y_top - y_bottom) / 2 
                 
-                ax.plot([x_logo, x_logo], [y_bottom, y_top], color=c_edge, lw=1.5)
-                ax.plot([0, x_logo], [y_top - row_h, y_top - row_h], color=c_edge, lw=1.5)
-                ax.plot([x_split, x_split], [y_bottom, y_top - row_h], color=c_edge, lw=1.5)
+                # Fila 1: Nombre de empresa (Rosa Fuerte)
+                ax.add_patch(plt.Rectangle((0, y_top - row_h), x_logo, row_h, fill=True, facecolor=c_header, edgecolor=c_edge, lw=1.5))
+                # Fila 2: Lista de Compras (Rosa Claro)
+                ax.add_patch(plt.Rectangle((0, y_bottom), x_split, row_h, fill=True, facecolor=c_row1, edgecolor=c_edge, lw=1.5))
+                # Fila 2: Nombre de Tienda (Blanco)
+                ax.add_patch(plt.Rectangle((x_split, y_bottom), x_logo - x_split, row_h, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5))
+                # Caja del Logo
+                ax.add_patch(plt.Rectangle((x_logo, y_bottom), 1 - x_logo, y_top - y_bottom, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5))
                 
                 pad = 0.02
-                ax.text(pad, y_top - row_h/2, "MEDHER BANQUETES Y MAS", ha='left', va='center', fontsize=12, color='black')
-                ax.text(pad, y_top - 1.5*row_h, "LISTA DE COMPRAS", ha='left', va='center', fontsize=11, color='black')
-                ax.text(x_split + pad, y_top - 1.5*row_h, tienda_activa.upper(), ha='left', va='center', fontsize=11, color='black')
+                ax.text(pad, y_top - row_h/2, "MEDHER BANQUETES Y MAS", ha='left', va='center', fontsize=12, fontweight='bold', color='black')
+                ax.text(pad, y_top - 1.5*row_h, "LISTA DE COMPRAS", ha='left', va='center', fontsize=11, fontweight='bold', color='black')
+                ax.text(x_split + pad, y_top - 1.5*row_h, tienda_activa.upper(), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
                 
                 try:
                     url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
                     logo_img = Image.open(urllib.request.urlopen(url_logo))
-                    logo_img.thumbnail((110, 110))
+                    logo_img.thumbnail((85, 85)) # Tamaño reducido
                     imagebox = OffsetImage(logo_img, zoom=1)
                     ab = AnnotationBbox(imagebox, (x_logo + (1-x_logo)/2, y_bottom + (y_top-y_bottom)/2), xycoords='axes fraction', frameon=False, box_alignment=(0.5, 0.5))
                     ax.add_artist(ab)
