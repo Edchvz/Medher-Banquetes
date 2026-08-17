@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Diseño de Doble Tabla Exportable)
+Sistema Operativo de Banquetes - Medher (Diseño Vertical, Rosas y Logo)
 """
 
 import os
@@ -179,67 +179,47 @@ with tab1:
 
       def generar_jpg():
         df_t = st.session_state.tabla_calculada
-        num_rows = len(df_t)
+        # Formato vertical (Portrait)
+        fig, ax = plt.subplots(figsize=(8, max(10, len(df_t) * 0.4 + 3))) 
+        ax.axis('off'); ax.axis('tight')
         
-        # Cálculo dinámico de altura para que siempre se vea bien proporcionado
-        row_height = 0.35
-        header_height = 1.6
-        fig_height = max(5, header_height + (num_rows + 1) * row_height)
+        # Título a la izquierda
+        ax.set_title(
+            f"MEDHER BANQUETES Y MÁS\nOrden de Producción: {st.session_state.receta_activa.upper()}\nPlatillos: {st.session_state.platillos_activos}\n", 
+            fontsize=14, fontweight='bold', color='black', loc='left', pad=40
+        )
         
-        fig, ax = plt.subplots(figsize=(9, fig_height))
-        ax.axis('off')
-        
-        # Dividimos el espacio: una fracción arriba para el header, el resto para los datos
-        header_frac = header_height / fig_height
-        
-        # --- TABLA 1: ENCABEZADO ---
-        header_bbox = [0, 1 - header_frac + 0.05, 1, header_frac - 0.05] # Margen entre tablas
-        header_text = f"   MEDHER BANQUETES Y MÁS\n   Orden de Producción: {st.session_state.receta_activa.upper()}\n   Platillos: {st.session_state.platillos_activos}"
-        header_table = ax.table(cellText=[[header_text, ""]], colWidths=[0.8, 0.2], cellLoc='left', bbox=header_bbox)
-        header_table.auto_set_font_size(False)
-        header_table.set_fontsize(14)
-        
-        for key, cell in header_table.get_celld().items():
-            cell.set_edgecolor('#D81B60')
-            cell.set_linewidth(1.5)
-            cell.set_facecolor('white')
-            if key[1] == 0:
-                cell.set_text_props(weight='bold', color='black')
-
-        # Insertar logo exacto en la celda derecha del encabezado
+        # Insertar logotipo arriba a la derecha
         try:
             url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
             logo_img = Image.open(urllib.request.urlopen(url_logo))
-            logo_img.thumbnail((95, 95))
+            logo_img.thumbnail((90, 90)) # Tamaño del logo
             imagebox = OffsetImage(logo_img, zoom=1)
-            y_center = 1 - (header_frac / 2) + 0.025
-            ab = AnnotationBbox(imagebox, (0.9, y_center), xycoords='axes fraction', frameon=False, box_alignment=(0.5, 0.5))
+            ab = AnnotationBbox(imagebox, (1, 1.05), xycoords='axes fraction', box_alignment=(1, 0), frameon=False)
             ax.add_artist(ab)
         except:
-            pass
-
-        # --- TABLA 2: INSUMOS ---
-        data_bbox = [0, 0, 1, 1 - header_frac]
+            pass # Si falla internet, simplemente no lo pone y sigue adelante
+            
         table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in df_t.iterrows()]
-        table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], cellLoc='center', bbox=data_bbox)
-        table.auto_set_font_size(False)
-        table.set_fontsize(12)
-
-        # Paleta de Colores Rosada
-        c_header = '#F48FB1'
-        c_row1 = '#FCE4EC'
-        c_row2 = '#FFFFFF'
-        c_edge = '#D81B60'
+        table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center')
+        
+        table.auto_set_font_size(False); table.set_fontsize(11); table.scale(1.2, 1.8)
+        
+        # Nueva Paleta de Colores (Rosas y Negro)
+        c_header = '#F48FB1' # Rosa medio (Cabecera)
+        c_row1 = '#FCE4EC'   # Rosa súper claro (Fila 1)
+        c_row2 = '#FFFFFF'   # Blanco (Fila 2)
+        c_edge = '#D81B60'   # Borde rosa fuerte
         
         for key, cell in table.get_celld().items():
-            cell.set_edgecolor(c_edge)
-            cell.set_text_props(color='black')
-            if key[0] == 0: 
-                cell.set_text_props(fontweight='bold')
-                cell.set_facecolor(c_header)
-            else: 
-                cell.set_facecolor(c_row1 if key[0] % 2 == 0 else c_row2)
-                
+          cell.set_edgecolor(c_edge)
+          cell.set_text_props(color='black') # Letras negras
+          if key[0] == 0: 
+              cell.set_text_props(fontweight='bold')
+              cell.set_facecolor(c_header)
+          else: 
+              cell.set_facecolor(c_row1 if key[0] % 2 == 0 else c_row2)
+              
         buf = io.BytesIO()
         plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300)
         plt.close(fig)
@@ -354,51 +334,32 @@ with tab2:
             st.text_area("Texto formateado para WhatsApp:", texto_tienda, height=200)
 
             def generar_jpg_tienda():
-                edited_sorted = edited_tienda.sort_values(by="Categoria")
-                num_rows = len(edited_sorted)
+                # Formato vertical (Portrait)
+                fig, ax = plt.subplots(figsize=(8, max(10, len(edited_tienda) * 0.4 + 3))) 
+                ax.axis('off'); ax.axis('tight')
                 
-                row_height = 0.35
-                header_height = 1.6
-                fig_height = max(5, header_height + (num_rows + 1) * row_height)
+                ax.set_title(
+                    f"MEDHER BANQUETES Y MÁS\nLista de Compras: {tienda_activa.upper()}\n", 
+                    fontsize=14, fontweight='bold', color='black', loc='left', pad=40
+                )
                 
-                fig, ax = plt.subplots(figsize=(9, fig_height))
-                ax.axis('off')
-                
-                header_frac = header_height / fig_height
-                
-                # --- TABLA 1: ENCABEZADO ---
-                header_bbox = [0, 1 - header_frac + 0.05, 1, header_frac - 0.05]
-                header_text = f"   MEDHER BANQUETES Y MÁS\n   Lista de Compras: {tienda_activa.upper()}"
-                header_table = ax.table(cellText=[[header_text, ""]], colWidths=[0.8, 0.2], cellLoc='left', bbox=header_bbox)
-                header_table.auto_set_font_size(False)
-                header_table.set_fontsize(14)
-                
-                for key, cell in header_table.get_celld().items():
-                    cell.set_edgecolor('#D81B60')
-                    cell.set_linewidth(1.5)
-                    cell.set_facecolor('white')
-                    if key[1] == 0:
-                        cell.set_text_props(weight='bold', color='black')
-
                 try:
                     url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
                     logo_img = Image.open(urllib.request.urlopen(url_logo))
-                    logo_img.thumbnail((95, 95))
+                    logo_img.thumbnail((90, 90))
                     imagebox = OffsetImage(logo_img, zoom=1)
-                    y_center = 1 - (header_frac / 2) + 0.025
-                    ab = AnnotationBbox(imagebox, (0.9, y_center), xycoords='axes fraction', frameon=False, box_alignment=(0.5, 0.5))
+                    ab = AnnotationBbox(imagebox, (1, 1.05), xycoords='axes fraction', box_alignment=(1, 0), frameon=False)
                     ax.add_artist(ab)
                 except:
                     pass
-
-                # --- TABLA 2: INSUMOS ---
-                data_bbox = [0, 0, 1, 1 - header_frac]
+                
+                edited_sorted = edited_tienda.sort_values(by="Categoria")
                 table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in edited_sorted.iterrows()]
                 
-                table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center', bbox=data_bbox)
-                table.auto_set_font_size(False)
-                table.set_fontsize(12)
+                table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center')
+                table.auto_set_font_size(False); table.set_fontsize(11); table.scale(1.2, 1.8)
                 
+                # Nueva Paleta de Colores (Rosas y Negro)
                 c_header = '#F48FB1'
                 c_row1 = '#FCE4EC'
                 c_row2 = '#FFFFFF'
@@ -414,9 +375,7 @@ with tab2:
                         cell.set_facecolor(c_row1 if key[0] % 2 == 0 else c_row2)
                         
                 buf = io.BytesIO()
-                plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300)
-                plt.close(fig)
-                buf.seek(0)
+                plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300); plt.close(fig); buf.seek(0)
                 return buf
 
             st.download_button("📥 Guardar Lista en Imagen (JPG)", data=generar_jpg_tienda(), file_name=f"Compras_{tienda_activa}.jpg", mime="image/jpeg")
