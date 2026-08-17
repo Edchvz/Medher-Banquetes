@@ -221,9 +221,9 @@ with tab1:
         # Textos en Negritas
         pad = 0.02
         ax.text(pad, y_top - row_h/2, "MEDHER BANQUETES Y MAS", ha='left', va='center', fontsize=12, fontweight='bold', color='black')
-        ax.text(pad, y_top - 1.5*row_h, "ORDEN DE PRODUCCION", ha='left', va='center', fontsize=11, fontweight='bold', color='black')
+        ax.text(pad, y_top - 1.5*row_h, "ORDEN DE PRODUCCION", ha='left', va='center', fontsize=10, fontweight='bold', color='black')
         ax.text(x_split + pad, y_top - 1.5*row_h, st.session_state.receta_activa.upper(), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
-        ax.text(pad, y_top - 2.5*row_h, "PLATILLOS", ha='left', va='center', fontsize=11, fontweight='bold', color='black')
+        ax.text(pad, y_top - 2.5*row_h, "PLATILLOS", ha='left', va='center', fontsize=10, fontweight='bold', color='black')
         ax.text(x_split + pad, y_top - 2.5*row_h, str(st.session_state.platillos_activos), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
         
         # Insertar Logo ajustado a la medida de la caja
