@@ -14,7 +14,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 FILE_PATH = "recetas_base.csv"
 FILE_LISTAS = "listas_compras.csv"
-CATEGORIAS = ["Abarrotes", "Carnicería", "Frutas y Verduras", "Lácteos y Refrigerados", "Desechables", "Bebidas", "Limpieza", "General"]
+CATEGORIAS = ["Abarrotes", "Carnicería", "Frutas y Verduras", "Lácteos y Refrigerados", "Desechables", "Bebidas", "Limpieza", "General", "Especies"]
 
 # --- 1. INICIALIZACIÓN Y BASE DE DATOS ---
 if not os.path.exists(FILE_PATH):
