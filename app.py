@@ -228,7 +228,7 @@ with tab1:
         
         # Insertar Logo ajustado a la medida de la caja
         try:
-            url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg"
+            url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.png"
             logo_img = Image.open(urllib.request.urlopen(url_logo))
             logo_img.thumbnail((85, 85)) # Tamaño reducido para que no se desborde del recuadro
             imagebox = OffsetImage(logo_img, zoom=1)
