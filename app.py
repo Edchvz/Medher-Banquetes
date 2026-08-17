@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Diseño Vertical, Rosas y Logo)
+Sistema Operativo de Banquetes - Medher (Diseño Exacto de Tabla Superior Dividida)
 """
 
 import os
@@ -179,47 +179,86 @@ with tab1:
 
       def generar_jpg():
         df_t = st.session_state.tabla_calculada
-        # Formato vertical (Portrait)
-        fig, ax = plt.subplots(figsize=(8, max(10, len(df_t) * 0.4 + 3))) 
-        ax.axis('off'); ax.axis('tight')
+        num_rows = len(df_t)
         
-        # Título a la izquierda
-        ax.set_title(
-            f"MEDHER BANQUETES Y MÁS\nOrden de Producción: {st.session_state.receta_activa.upper()}\nPlatillos: {st.session_state.platillos_activos}\n", 
-            fontsize=14, fontweight='bold', color='black', loc='left', pad=40
-        )
+        row_height = 0.35
+        header_height = 1.8
+        fig_height = max(6, header_height + (num_rows + 1) * row_height)
         
-        # Insertar logotipo arriba a la derecha
+        fig, ax = plt.subplots(figsize=(8, fig_height))
+        # Ajustamos el sistema de coordenadas de 0 a 1 para dibujar fácilmente
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.axis('off')
+        
+        header_frac = header_height / fig_height
+        
+        # Coordenadas Y para el encabezado superior
+        y_top = 1 - 0.02
+        y_bottom = 1 - header_frac + 0.03
+        
+        c_header = '#F48FB1'
+        c_row1 = '#FCE4EC'
+        c_row2 = '#FFFFFF'
+        c_edge = '#D81B60'
+        
+        # --- TABLA SUPERIOR DIBUJADA MANUALMENTE ---
+        # Borde exterior del encabezado
+        rect = plt.Rectangle((0, y_bottom), 1, y_top - y_bottom, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5)
+        ax.add_patch(rect)
+        
+        x_logo = 0.75  # Corte vertical para la zona del logo
+        x_split = 0.35 # Corte vertical entre títulos y valores (Orden y Platillos)
+        row_h = (y_top - y_bottom) / 3 # Altura de cada una de las 3 filas
+        
+        # Trazar lineas internas exactas del boceto
+        ax.plot([x_logo, x_logo], [y_bottom, y_top], color=c_edge, lw=1.5) # Division Logo
+        ax.plot([0, x_logo], [y_top - row_h, y_top - row_h], color=c_edge, lw=1.5) # Fila 1 a 2
+        ax.plot([0, x_logo], [y_top - 2*row_h, y_top - 2*row_h], color=c_edge, lw=1.5) # Fila 2 a 3
+        ax.plot([x_split, x_split], [y_bottom, y_top - row_h], color=c_edge, lw=1.5) # Division textos col 1 y 2
+        
+        # Textos de la tabla superior alineados a la izquierda
+        pad = 0.02 # Margen interior
+        
+        # Fila 1
+        ax.text(pad, y_top - row_h/2, "MEDHER BANQUETES Y MAS", ha='left', va='center', fontsize=12, color='black')
+        # Fila 2
+        ax.text(pad, y_top - 1.5*row_h, "ORDEN DE PRODUCCION", ha='left', va='center', fontsize=11, color='black')
+        ax.text(x_split + pad, y_top - 1.5*row_h, st.session_state.receta_activa.upper(), ha='left', va='center', fontsize=11, color='black')
+        # Fila 3
+        ax.text(pad, y_top - 2.5*row_h, "PLATILLOS", ha='left', va='center', fontsize=11, color='black')
+        ax.text(x_split + pad, y_top - 2.5*row_h, str(st.session_state.platillos_activos), ha='left', va='center', fontsize=11, color='black')
+        
+        # Insertar Logo en el recuadro combinado de la derecha
         try:
             url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
             logo_img = Image.open(urllib.request.urlopen(url_logo))
-            logo_img.thumbnail((90, 90)) # Tamaño del logo
+            logo_img.thumbnail((110, 110))
             imagebox = OffsetImage(logo_img, zoom=1)
-            ab = AnnotationBbox(imagebox, (1, 1.05), xycoords='axes fraction', box_alignment=(1, 0), frameon=False)
+            # Centrado perfecto en la sección derecha
+            ab = AnnotationBbox(imagebox, (x_logo + (1-x_logo)/2, y_bottom + (y_top-y_bottom)/2), xycoords='axes fraction', frameon=False, box_alignment=(0.5, 0.5))
             ax.add_artist(ab)
         except:
-            pass # Si falla internet, simplemente no lo pone y sigue adelante
-            
+            pass
+
+        # --- TABLA INFERIOR DE INSUMOS ---
+        # Toma el resto del lienzo hacia abajo
+        data_bbox = [0, 0, 1, y_bottom - 0.02]
         table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in df_t.iterrows()]
-        table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center')
+        table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], cellLoc='center', bbox=data_bbox)
         
-        table.auto_set_font_size(False); table.set_fontsize(11); table.scale(1.2, 1.8)
-        
-        # Nueva Paleta de Colores (Rosas y Negro)
-        c_header = '#F48FB1' # Rosa medio (Cabecera)
-        c_row1 = '#FCE4EC'   # Rosa súper claro (Fila 1)
-        c_row2 = '#FFFFFF'   # Blanco (Fila 2)
-        c_edge = '#D81B60'   # Borde rosa fuerte
+        table.auto_set_font_size(False)
+        table.set_fontsize(11)
         
         for key, cell in table.get_celld().items():
-          cell.set_edgecolor(c_edge)
-          cell.set_text_props(color='black') # Letras negras
-          if key[0] == 0: 
-              cell.set_text_props(fontweight='bold')
-              cell.set_facecolor(c_header)
-          else: 
-              cell.set_facecolor(c_row1 if key[0] % 2 == 0 else c_row2)
-              
+            cell.set_edgecolor(c_edge)
+            cell.set_text_props(color='black')
+            if key[0] == 0: 
+                cell.set_text_props(fontweight='bold')
+                cell.set_facecolor(c_header)
+            else: 
+                cell.set_facecolor(c_row1 if key[0] % 2 == 0 else c_row2)
+                
         buf = io.BytesIO()
         plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300)
         plt.close(fig)
@@ -334,36 +373,61 @@ with tab2:
             st.text_area("Texto formateado para WhatsApp:", texto_tienda, height=200)
 
             def generar_jpg_tienda():
-                # Formato vertical (Portrait)
-                fig, ax = plt.subplots(figsize=(8, max(10, len(edited_tienda) * 0.4 + 3))) 
-                ax.axis('off'); ax.axis('tight')
-                
-                ax.set_title(
-                    f"MEDHER BANQUETES Y MÁS\nLista de Compras: {tienda_activa.upper()}\n", 
-                    fontsize=14, fontweight='bold', color='black', loc='left', pad=40
-                )
-                
-                try:
-                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
-                    logo_img = Image.open(urllib.request.urlopen(url_logo))
-                    logo_img.thumbnail((90, 90))
-                    imagebox = OffsetImage(logo_img, zoom=1)
-                    ab = AnnotationBbox(imagebox, (1, 1.05), xycoords='axes fraction', box_alignment=(1, 0), frameon=False)
-                    ax.add_artist(ab)
-                except:
-                    pass
-                
                 edited_sorted = edited_tienda.sort_values(by="Categoria")
-                table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in edited_sorted.iterrows()]
+                num_rows = len(edited_sorted)
                 
-                table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center')
-                table.auto_set_font_size(False); table.set_fontsize(11); table.scale(1.2, 1.8)
+                row_height = 0.35
+                header_height = 1.3
+                fig_height = max(5, header_height + (num_rows + 1) * row_height)
                 
-                # Nueva Paleta de Colores (Rosas y Negro)
+                fig, ax = plt.subplots(figsize=(8, fig_height))
+                ax.set_xlim(0, 1)
+                ax.set_ylim(0, 1)
+                ax.axis('off')
+                
+                header_frac = header_height / fig_height
+                y_top = 1 - 0.02
+                y_bottom = 1 - header_frac + 0.03
+                
                 c_header = '#F48FB1'
                 c_row1 = '#FCE4EC'
                 c_row2 = '#FFFFFF'
                 c_edge = '#D81B60'
+                
+                # --- TABLA SUPERIOR MANUAL ---
+                rect = plt.Rectangle((0, y_bottom), 1, y_top - y_bottom, fill=True, facecolor='white', edgecolor=c_edge, lw=1.5)
+                ax.add_patch(rect)
+                
+                x_logo = 0.75
+                x_split = 0.35
+                row_h = (y_top - y_bottom) / 2 # Esta tabla solo tiene 2 filas en lugar de 3
+                
+                ax.plot([x_logo, x_logo], [y_bottom, y_top], color=c_edge, lw=1.5)
+                ax.plot([0, x_logo], [y_top - row_h, y_top - row_h], color=c_edge, lw=1.5)
+                ax.plot([x_split, x_split], [y_bottom, y_top - row_h], color=c_edge, lw=1.5)
+                
+                pad = 0.02
+                ax.text(pad, y_top - row_h/2, "MEDHER BANQUETES Y MAS", ha='left', va='center', fontsize=12, color='black')
+                ax.text(pad, y_top - 1.5*row_h, "LISTA DE COMPRAS", ha='left', va='center', fontsize=11, color='black')
+                ax.text(x_split + pad, y_top - 1.5*row_h, tienda_activa.upper(), ha='left', va='center', fontsize=11, color='black')
+                
+                try:
+                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
+                    logo_img = Image.open(urllib.request.urlopen(url_logo))
+                    logo_img.thumbnail((110, 110))
+                    imagebox = OffsetImage(logo_img, zoom=1)
+                    ab = AnnotationBbox(imagebox, (x_logo + (1-x_logo)/2, y_bottom + (y_top-y_bottom)/2), xycoords='axes fraction', frameon=False, box_alignment=(0.5, 0.5))
+                    ax.add_artist(ab)
+                except:
+                    pass
+
+                # --- TABLA DE DATOS ---
+                data_bbox = [0, 0, 1, y_bottom - 0.02]
+                table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in edited_sorted.iterrows()]
+                table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center', bbox=data_bbox)
+                
+                table.auto_set_font_size(False)
+                table.set_fontsize(11)
                 
                 for key, cell in table.get_celld().items():
                     cell.set_edgecolor(c_edge)
