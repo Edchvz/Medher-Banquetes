@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Ajuste de Texto y Nuevo Logo)
+Sistema Operativo de Banquetes - Medher (Diseño Superior Coloreado y Bordes Negros)
 """
 
 import os
@@ -81,14 +81,14 @@ def obtener_catalogo_insumos(df_recetas, df_listas):
 # --- CONFIGURACIÓN DE PÁGINA E ICONOS ---
 st.set_page_config(
     page_title="Medher Banquetes y Más", 
-    page_icon="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg", 
+    page_icon="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png", 
     layout="wide" 
 )
 
 st.markdown(
     """
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg">
-    <link rel="shortcut icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png">
+    <link rel="shortcut icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png">
     """,
     unsafe_allow_html=True
 )
@@ -96,7 +96,7 @@ st.markdown(
 st.markdown(
     """
     <div style="display: flex; align-items: center; margin-bottom: 10px;">
-        <img src="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg" width="55" style="border-radius: 12px; margin-right: 15px;">
+        <img src="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png" width="55" style="border-radius: 12px; margin-right: 15px;">
         <h1 style="margin: 0;">Medher Banquetes y Más</h1>
     </div>
     """, 
@@ -198,10 +198,10 @@ with tab1:
         c_header = '#F48FB1'
         c_row1 = '#FCE4EC'
         c_row2 = '#FFFFFF'
-        c_edge = 'black'
+        c_edge = 'black' # BORDES NEGROS
         
         x_logo = 0.75
-        x_split = 0.45 # <-- Ajustado para darle más espacio al texto de la izquierda
+        x_split = 0.35
         row_h = (y_top - y_bottom) / 3
         
         # --- TABLA SUPERIOR DIBUJADA MANUALMENTE CON COLORES EXACTOS ---
@@ -226,11 +226,11 @@ with tab1:
         ax.text(pad, y_top - 2.5*row_h, "PLATILLOS", ha='left', va='center', fontsize=11, fontweight='bold', color='black')
         ax.text(x_split + pad, y_top - 2.5*row_h, str(st.session_state.platillos_activos), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
         
-        # Insertar Nuevo Logo
+        # Insertar Logo ajustado a la medida de la caja
         try:
             url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg"
             logo_img = Image.open(urllib.request.urlopen(url_logo))
-            logo_img.thumbnail((85, 85)) 
+            logo_img.thumbnail((85, 85)) # Tamaño reducido para que no se desborde del recuadro
             imagebox = OffsetImage(logo_img, zoom=1)
             ab = AnnotationBbox(imagebox, (x_logo + (1-x_logo)/2, y_bottom + (y_top-y_bottom)/2), xycoords='axes fraction', frameon=False, box_alignment=(0.5, 0.5))
             ax.add_artist(ab)
@@ -387,10 +387,10 @@ with tab2:
                 c_header = '#F48FB1'
                 c_row1 = '#FCE4EC'
                 c_row2 = '#FFFFFF'
-                c_edge = 'black'
+                c_edge = 'black' # BORDES NEGROS
                 
                 x_logo = 0.75
-                x_split = 0.45 # <-- Ajustado igual que en el otro reporte
+                x_split = 0.35
                 row_h = (y_top - y_bottom) / 2 
                 
                 # Fila 1: Nombre de empresa (Rosa Fuerte)
@@ -408,9 +408,9 @@ with tab2:
                 ax.text(x_split + pad, y_top - 1.5*row_h, tienda_activa.upper(), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
                 
                 try:
-                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg"
+                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
                     logo_img = Image.open(urllib.request.urlopen(url_logo))
-                    logo_img.thumbnail((85, 85))
+                    logo_img.thumbnail((85, 85)) # Tamaño reducido
                     imagebox = OffsetImage(logo_img, zoom=1)
                     ab = AnnotationBbox(imagebox, (x_logo + (1-x_logo)/2, y_bottom + (y_top-y_bottom)/2), xycoords='axes fraction', frameon=False, box_alignment=(0.5, 0.5))
                     ax.add_artist(ab)
