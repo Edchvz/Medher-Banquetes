@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Actualización de Estado Dinámico de Campos)
+Sistema Operativo de Banquetes - Medher (Diseño Vertical, Rosas y Logo)
 """
 
 import os
@@ -8,6 +8,9 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import io
+import urllib.request
+from PIL import Image
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 FILE_PATH = "recetas_base.csv"
 FILE_LISTAS = "listas_compras.csv"
@@ -176,18 +179,51 @@ with tab1:
 
       def generar_jpg():
         df_t = st.session_state.tabla_calculada
-        fig, ax = plt.subplots(figsize=(10, max(4, len(df_t) * 0.4 + 2))) 
+        # Formato vertical (Portrait)
+        fig, ax = plt.subplots(figsize=(8, max(10, len(df_t) * 0.4 + 3))) 
         ax.axis('off'); ax.axis('tight')
-        ax.set_title(f"MEDHER BANQUETES Y MÁS\nOrden de Producción: {st.session_state.receta_activa.upper()}\nPlatillos: {st.session_state.platillos_activos}\n", fontsize=12, fontweight='bold', color='#2c3e50', pad=20)
+        
+        # Título a la izquierda
+        ax.set_title(
+            f"MEDHER BANQUETES Y MÁS\nOrden de Producción: {st.session_state.receta_activa.upper()}\nPlatillos: {st.session_state.platillos_activos}\n", 
+            fontsize=14, fontweight='bold', color='black', loc='left', pad=40
+        )
+        
+        # Insertar logotipo arriba a la derecha
+        try:
+            url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
+            logo_img = Image.open(urllib.request.urlopen(url_logo))
+            logo_img.thumbnail((90, 90)) # Tamaño del logo
+            imagebox = OffsetImage(logo_img, zoom=1)
+            ab = AnnotationBbox(imagebox, (1, 1.05), xycoords='axes fraction', box_alignment=(1, 0), frameon=False)
+            ax.add_artist(ab)
+        except:
+            pass # Si falla internet, simplemente no lo pone y sigue adelante
+            
         table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in df_t.iterrows()]
-        table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center', colColours=['#2c3e50']*4)
-        table.auto_set_font_size(False); table.set_fontsize(10); table.scale(1.2, 1.5)
+        table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center')
+        
+        table.auto_set_font_size(False); table.set_fontsize(11); table.scale(1.2, 1.8)
+        
+        # Nueva Paleta de Colores (Rosas y Negro)
+        c_header = '#F48FB1' # Rosa medio (Cabecera)
+        c_row1 = '#FCE4EC'   # Rosa súper claro (Fila 1)
+        c_row2 = '#FFFFFF'   # Blanco (Fila 2)
+        c_edge = '#D81B60'   # Borde rosa fuerte
+        
         for key, cell in table.get_celld().items():
-          cell.set_edgecolor('#bdc3c7')
-          if key[0] == 0: cell.set_text_props(color='white', fontweight='bold'); cell.set_facecolor('#2c3e50')
-          else: cell.set_facecolor('#ecf0f1' if key[0] % 2 == 0 else 'white')
+          cell.set_edgecolor(c_edge)
+          cell.set_text_props(color='black') # Letras negras
+          if key[0] == 0: 
+              cell.set_text_props(fontweight='bold')
+              cell.set_facecolor(c_header)
+          else: 
+              cell.set_facecolor(c_row1 if key[0] % 2 == 0 else c_row2)
+              
         buf = io.BytesIO()
-        plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300); plt.close(fig); buf.seek(0)
+        plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300)
+        plt.close(fig)
+        buf.seek(0)
         return buf
 
       st.download_button("📥 Guardar Reporte en Imagen (JPG)", data=generar_jpg(), file_name=f"Produccion_{st.session_state.receta_activa}_{st.session_state.platillos_activos}pax.jpg", mime="image/jpeg")
@@ -298,19 +334,46 @@ with tab2:
             st.text_area("Texto formateado para WhatsApp:", texto_tienda, height=200)
 
             def generar_jpg_tienda():
-                fig, ax = plt.subplots(figsize=(10, max(4, len(edited_tienda) * 0.4 + 2))) 
+                # Formato vertical (Portrait)
+                fig, ax = plt.subplots(figsize=(8, max(10, len(edited_tienda) * 0.4 + 3))) 
                 ax.axis('off'); ax.axis('tight')
-                ax.set_title(f"MEDHER BANQUETES Y MÁS\nLista de Compras: {tienda_activa.upper()}\n", fontsize=12, fontweight='bold', color='#2c3e50', pad=20)
+                
+                ax.set_title(
+                    f"MEDHER BANQUETES Y MÁS\nLista de Compras: {tienda_activa.upper()}\n", 
+                    fontsize=14, fontweight='bold', color='black', loc='left', pad=40
+                )
+                
+                try:
+                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png"
+                    logo_img = Image.open(urllib.request.urlopen(url_logo))
+                    logo_img.thumbnail((90, 90))
+                    imagebox = OffsetImage(logo_img, zoom=1)
+                    ab = AnnotationBbox(imagebox, (1, 1.05), xycoords='axes fraction', box_alignment=(1, 0), frameon=False)
+                    ax.add_artist(ab)
+                except:
+                    pass
                 
                 edited_sorted = edited_tienda.sort_values(by="Categoria")
                 table_data = [[row['Categoria'], row['Ingrediente'], str(row['Cantidad']), str(row['Unidad'])] for _, row in edited_sorted.iterrows()]
                 
-                table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center', colColours=['#2c3e50']*4)
-                table.auto_set_font_size(False); table.set_fontsize(10); table.scale(1.2, 1.5)
+                table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], loc='center', cellLoc='center')
+                table.auto_set_font_size(False); table.set_fontsize(11); table.scale(1.2, 1.8)
+                
+                # Nueva Paleta de Colores (Rosas y Negro)
+                c_header = '#F48FB1'
+                c_row1 = '#FCE4EC'
+                c_row2 = '#FFFFFF'
+                c_edge = '#D81B60'
+                
                 for key, cell in table.get_celld().items():
-                    cell.set_edgecolor('#bdc3c7')
-                    if key[0] == 0: cell.set_text_props(color='white', fontweight='bold'); cell.set_facecolor('#2c3e50')
-                    else: cell.set_facecolor('#ecf0f1' if key[0] % 2 == 0 else 'white')
+                    cell.set_edgecolor(c_edge)
+                    cell.set_text_props(color='black')
+                    if key[0] == 0: 
+                        cell.set_text_props(fontweight='bold')
+                        cell.set_facecolor(c_header)
+                    else: 
+                        cell.set_facecolor(c_row1 if key[0] % 2 == 0 else c_row2)
+                        
                 buf = io.BytesIO()
                 plt.savefig(buf, format='jpg', bbox_inches='tight', dpi=300); plt.close(fig); buf.seek(0)
                 return buf
