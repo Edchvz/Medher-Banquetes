@@ -243,7 +243,7 @@ with tab1:
         table = ax.table(cellText=table_data, colLabels=["Categoría", "Ingrediente", "Cantidad", "Unidad"], cellLoc='center', bbox=data_bbox)
         
         table.auto_set_font_size(False)
-        table.set_fontsize(11)
+        table.set_fontsize(10)
         
         for key, cell in table.get_celld().items():
             cell.set_edgecolor(c_edge) # Bordes negros
