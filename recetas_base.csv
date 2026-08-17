@@ -2,7 +2,7 @@ Receta,Platillos_Base,Ingrediente,Cantidad_Base,Unidad,Categoria
 Pechuga,60.0,Queso crema,1.0,Barra,General
 Pechuga,60.0,Champiñones,1.0,Lata,General
 Pechuga,60.0,Espaguetti,1.0,Pkt,General
-Pechuga,60.0,Chile poblano,10.0,pza,General
+Pechuga,60.0,Chile poblano,10.0,pza,Frutas y Verduras
 Pechuga,60.0,Espinaca,3.0,Manojo,General
 Pechuga,60.0,Papa,6.0,Kg,General
 Pechuga,60.0,Mantequilla,2.0,Bote,General
@@ -31,7 +31,7 @@ Chicharron prensado,100.0,Cabeza de ajo,1.0,pza,Frutas y Verduras
 Chicharron prensado,100.0,Cilantro,2.0,Manojo,General
 Chicharron prensado,100.0,Tomatillos,15.0,pza,General
 Chicharron prensado,100.0,Tomates,12.0,pza,Frutas y Verduras
-Rajas poblanas,100.0,Chile poblano,25.0,pza,General
+Rajas poblanas,100.0,Chile poblano,25.0,pza,Frutas y Verduras
 Rajas poblanas,100.0,Cebolla,2.0,pza,Frutas y Verduras
 Rajas poblanas,100.0,Crema,1.0,lt,Lácteos y Refrigerados
 Rajas poblanas,100.0,Queso crema,2.0,Barra,Lácteos y Refrigerados
