@@ -35,9 +35,6 @@ Salsa para tamales,2.0,Pechugas,1.0,Caja,Carnicería
 Salsa para tamales,2.0,Tomatillos,4.0,pza,Frutas y Verduras
 Salsa para tamales,2.0,Cilantro,0.5,Manojo,Frutas y Verduras
 Salsa para tamales,2.0,Chile Jalapeño,10.0,pza,Frutas y Verduras
-Huevo salsa verde,100.0,Tapa de huevo,3.0,pza,Abarrotes
-Huevo salsa verde,100.0,Chile Jalapeño,85.0,pza,Frutas y Verduras
-Huevo salsa verde,100.0,Aceite,2.0,lt,Abarrotes
 Pollo en chipotle,60.0,Pierna y muslo,10.0,kg,Carnicería
 Pollo en chipotle,60.0,Lata de Chipotle,1.0,Lata,Frutas y Verduras
 Pollo en chipotle,60.0,Champiñones,1.0,Lata,Frutas y Verduras
@@ -88,3 +85,6 @@ Ensalada de papa,10.0,Mostaza,1.0,cda,Abarrotes
 Ensalada de papa,10.0,Pimienta,1.0,cda,Especies
 Ensalada de papa,10.0,sal,1.0,cda,Especies
 Ensalada de papa,10.0,Crema,4.0,cda,Lácteos y Refrigerados
+Huevo salsa verde,100.0,Chile Jalapeño,85.0,pza,Frutas y Verduras
+Huevo salsa verde,100.0,Aceite,2.0,lt,Abarrotes
+Huevo salsa verde,100.0,Huevos,3.0,Tapas,Abarrotes
