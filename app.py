@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema Operativo de Banquetes - Medher (Unidades Dinámicas y Logo Actualizado)
+Sistema Operativo de Banquetes - Medher (Unidades Dinámicas y Logo PNG en Reportes)
 """
 
 import os
@@ -81,14 +81,14 @@ def obtener_catalogo_insumos(df_recetas, df_listas):
 # --- CONFIGURACIÓN DE PÁGINA E ICONOS ---
 st.set_page_config(
     page_title="Medher Banquetes y Más", 
-    page_icon="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg", 
+    page_icon="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png", 
     layout="wide" 
 )
 
 st.markdown(
     """
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg">
-    <link rel="shortcut icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png">
+    <link rel="shortcut icon" href="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png">
     """,
     unsafe_allow_html=True
 )
@@ -96,7 +96,7 @@ st.markdown(
 st.markdown(
     """
     <div style="display: flex; align-items: center; margin-bottom: 10px;">
-        <img src="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg" width="55" style="border-radius: 12px; margin-right: 15px;">
+        <img src="https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/icono_medher.png" width="55" style="border-radius: 12px; margin-right: 15px;">
         <h1 style="margin: 0;">Medher Banquetes y Más</h1>
     </div>
     """, 
@@ -225,7 +225,7 @@ with tab1:
                 ax.text(x_split + pad, y_top - 2.5*row_h, str(st.session_state.platillos_activos), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
                 
                 try:
-                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg"
+                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.png"
                     logo_img = Image.open(urllib.request.urlopen(url_logo))
                     logo_img.thumbnail((85, 85)) 
                     imagebox = OffsetImage(logo_img, zoom=1)
@@ -403,7 +403,7 @@ with tab2:
                 ax.text(x_split + pad, y_top - 1.5*row_h, tienda_activa.upper(), ha='left', va='center', fontsize=11, fontweight='bold', color='black')
                 
                 try:
-                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.jpeg"
+                    url_logo = "https://raw.githubusercontent.com/Edchvz/Medher-Banquetes/main/IC_MED.png"
                     logo_img = Image.open(urllib.request.urlopen(url_logo))
                     logo_img.thumbnail((85, 85)) 
                     imagebox = OffsetImage(logo_img, zoom=1)
