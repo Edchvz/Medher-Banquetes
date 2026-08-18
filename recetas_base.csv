@@ -69,13 +69,6 @@ Pozole,30.0,Lechuga,2.0,pza,Frutas y Verduras
 Pozole,30.0,Rabanos,2.0,Manojos,Frutas y Verduras
 Pozole,30.0,Pkt Tostadas,3.0,Pkt,Abarrotes
 Pozole,30.0,limones,20.0,pza,Frutas y Verduras
-Ensalada de papa,10.0,Papa,1.0,Kg,Frutas y Verduras
-Ensalada de papa,10.0,Huevos,4.0,pza,Abarrotes
-Ensalada de papa,10.0,Mayonesa,1.0,tz,Lácteos y Refrigerados
-Ensalada de papa,10.0,Cda de mostaza,1.0,cda,Abarrotes
-Ensalada de papa,10.0,Cda crema,4.0,cda,Lácteos y Refrigerados
-Ensalada de papa,10.0,Pimienta,1.0,cda,Especies
-Ensalada de papa,10.0,sal,1.0,cda,Especies
 Asado de puerco,100.0,Carne de puerco,22.0,kg,Carnicería
 Asado de puerco,100.0,Chile ancho,15.0,pza,Frutas y Verduras
 Asado de puerco,100.0,Cabeza de ajo,2.0,pza,Frutas y Verduras
@@ -88,3 +81,10 @@ Asado de puerco,100.0,Frijol,4.0,kg,Abarrotes
 Asado de puerco,100.0,Arroz,4.0,kg,Abarrotes
 Asado de puerco,100.0,Aceite,2.0,lt,Abarrotes
 Asado de puerco,100.0,Chile cascabel,2.0,kg,Frutas y Verduras
+Ensalada de papa,10.0,Papa,1.0,Kg,Frutas y Verduras
+Ensalada de papa,10.0,Huevos,4.0,pza,Abarrotes
+Ensalada de papa,10.0,Mayonesa,1.0,tz,Lácteos y Refrigerados
+Ensalada de papa,10.0,Cda de mostaza,1.0,cda,Abarrotes
+Ensalada de papa,10.0,Pimienta,1.0,cda,Especies
+Ensalada de papa,10.0,sal,1.0,cda,Especies
+Ensalada de papa,10.0,Crema,4.0,cda,Lácteos y Refrigerados
